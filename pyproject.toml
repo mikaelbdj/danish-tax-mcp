@@ -1,0 +1,19 @@
+[project]
+name = "dk-tax"
+version = "0.1.0"
+description = "Danish personal tax figures and calculators, exposed as an MCP server"
+readme = "README.md"
+authors = [
+    { name = "Mikael Bisgaard Dahlsen-Jensen", email = "mikaelbdj@gmail.com" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "mcp>=2.3",
+]
+
+[project.scripts]
+dk-tax = "dk_tax:main"
+
+[build-system]
+requires = ["uv_build>=0.12.21,<0.13.0"]
+build-backend = "uv_build"
