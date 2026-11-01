@@ -1,0 +1,211 @@
+# Danish personal tax figures, income year 2025.
+#
+# One record per figure:
+#   name      exact term as printed in the source
+#   value     as printed in the source (percent as 12.01, amounts in whole kroner)
+#   unit      percent | DKK
+#   source    URL where the value can be checked
+#   verified  date the value was last checked against the source
+#   status    verified | secondary | unverified | proposed
+#   note      optional
+#
+# Keys are the Danish terms in ASCII snake_case (æ→ae, ø→oe, å→aa).
+#
+# 2025 is the last year before the 2026 tax reform: topskat here is the old 15 %
+# bracket (renamed mellemskat from 2026); mellemskat and toptopskat do not exist.
+# skat.dk/hjaelp/satser shows one year at a time; select 2025 with the year arrows.
+
+# --- Salary tax ---------------------------------------------------------------
+
+am_bidrag:
+  name: Am-bidrag (arbejdsmarkedsbidrag)
+  value: 8
+  unit: percent
+  source: https://skat.dk/hjaelp/satser
+  verified: 2026-11-01
+  status: verified
+  note: Levied on gross salary before all other income taxes.
+
+personfradrag:
+  name: Personfradrag (fyldt 18 år)
+  value: 51600
+  unit: DKK
+  source: https://skat.dk/hjaelp/satser
+  verified: 2026-11-01
+  status: verified
+
+bundskat:
+  name: Bundskat
+  value: 12.01
+  unit: percent
+  source: https://skat.dk/hjaelp/satser
+  verified: 2026-11-01
+  status: verified
+  note: Base is personal income plus positive net capital income.
+
+topskat:
+  name: Topskat (til og med 2025)
+  value: 15
+  unit: percent
+  source: https://skat.dk/hjaelp/satser
+  verified: 2026-11-01
+  status: verified
+  note: The pre-reform topskat; from 2026 this bracket is called mellemskat (7,5 %).
+
+topskat_graense:
+  name: Topskat (topskattegrænse til og med 2025 efter am-bidrag er fratrukket)
+  value: 611800
+  unit: DKK
+  source: https://skat.dk/hjaelp/satser
+  verified: 2026-11-01
+  status: verified
+  note: Personal income after AM-bidrag (665.000 kr. before AM-bidrag).
+
+topskat_kapitalindkomst_bundfradrag:
+  name: Bundfradrag i positiv nettokapitalindkomst i topskattegrundlaget
+  value: 52400
+  unit: DKK
+  source: https://skat.dk/hjaelp/satser
+  verified: 2026-11-01
+  status: verified
+  note: Positive net capital income above this is subject to topskat if personal plus capital income exceeds 664.200 kr.
+
+skatteloft:
+  name: Skatteloft (personlig indkomst)
+  value: 52.07
+  unit: percent
+  source: https://skat.dk/hjaelp/satser
+  verified: 2026-11-01
+  status: verified
+
+skatteloft_kapitalindkomst:
+  name: Skatteloft (positiv nettokapitalindkomst)
+  value: 42
+  unit: percent
+  source: https://skat.dk/hjaelp/satser
+  verified: 2026-11-01
+  status: verified
+
+beskaeftigelsesfradrag:
+  name: Beskæftigelsesfradrag (procent)
+  value: 12.3
+  unit: percent
+  source: https://skat.dk/hjaelp/satser
+  verified: 2026-11-01
+  status: verified
+
+beskaeftigelsesfradrag_max:
+  name: Beskæftigelsesfradrag (maksimalt)
+  value: 55600
+  unit: DKK
+  source: https://skat.dk/hjaelp/satser
+  verified: 2026-11-01
+  status: verified
+
+jobfradrag:
+  name: Jobfradrag (procent)
+  value: 4.5
+  unit: percent
+  source: https://skat.dk/hjaelp/satser
+  verified: 2026-11-01
+  status: verified
+  note: Applies to the base above jobfradrag_bundgraense.
+
+jobfradrag_bundgraense:
+  name: Jobfradrag, indkomst over
+  value: 224500
+  unit: DKK
+  source: https://skat.dk/borger/fradrag/arbejdsrelaterede-fradrag/beskaeftigelses-og-jobfradrag
+  verified: 2026-11-01
+  status: verified
+
+jobfradrag_max:
+  name: Jobfradrag (maksimalt)
+  value: 2900
+  unit: DKK
+  source: https://skat.dk/hjaelp/satser
+  verified: 2026-11-01
+  status: verified
+
+# --- Pension ------------------------------------------------------------------
+
+ratepension_max_indskud:
+  name: Ratepension og ophørende alderspension (maksimumgrænse)
+  value: 65500
+  unit: DKK
+  source: https://skat.dk/hjaelp/satser
+  verified: 2026-11-01
+  status: verified
+  note: Covers employer and own contributions together.
+
+aldersopsparing_max_indskud:
+  name: Aldersopsparing - indtil 7 år før folkepensionsalderen
+  value: 9400
+  unit: DKK
+  source: https://skat.dk/hjaelp/satser
+  verified: 2026-11-01
+  status: verified
+
+aldersopsparing_max_indskud_7aar:
+  name: Aldersopsparing - fra og med det 7. år før folkepensionsalderen
+  value: 61200
+  unit: DKK
+  source: https://skat.dk/hjaelp/satser
+  verified: 2026-11-01
+  status: verified
+
+pal_skat:
+  name: Skat af det skattepligtige afkast (pensionsafkastskat)
+  value: 15.3
+  unit: percent
+  source: https://svmn.dk/tal-og-metode/satser/satser-og-beloebsgraenser-i-lovgivningen/pensionsafkastbeskatningsloven
+  verified: 2026-11-01
+  status: verified
+  note: PAL § 2.
+
+# --- Investments --------------------------------------------------------------
+
+aktieindkomst_lav_sats:
+  name: Aktieindkomst (skattesatser under/over progressionsgrænsen)
+  value: 27
+  unit: percent
+  source: https://skat.dk/hjaelp/satser
+  verified: 2026-11-01
+  status: verified
+  note: Printed as "27/42 %".
+
+aktieindkomst_hoej_sats:
+  name: Aktieindkomst (skattesatser under/over progressionsgrænsen)
+  value: 42
+  unit: percent
+  source: https://skat.dk/hjaelp/satser
+  verified: 2026-11-01
+  status: verified
+  note: Printed as "27/42 %".
+
+aktieindkomst_progressionsgraense:
+  name: Aktieindkomst (progressionsgrænse)
+  value: 67500
+  unit: DKK
+  source: https://skat.dk/hjaelp/satser
+  verified: 2026-11-01
+  status: verified
+  note: Per person; married couples 135.000 kr. combined (skat.dk/borger/aktier-og-andre-vaerdipapirer/skat-af-aktier).
+
+aktiesparekonto_skat:
+  name: Skat af afkast på aktiesparekonto
+  value: 17
+  unit: percent
+  source: https://skat.dk/borger/aktier-og-andre-vaerdipapirer/aktiesparekonto
+  verified: 2026-11-01
+  status: verified
+  note: Taxed yearly on the change in value (lagerbeskatning).
+
+aktiesparekonto_indskudsloft:
+  name: Loft for indskud på aktiesparekonto
+  value: 166200
+  unit: DKK
+  source: https://skat.dk/borger/aktier-og-andre-vaerdipapirer/aktiesparekonto
+  verified: 2026-11-01
+  status: verified
+  note: Ceiling on total deposits, not yearly deposits.

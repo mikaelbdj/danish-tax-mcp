@@ -1,0 +1,255 @@
+# Danish personal tax figures, income year 2027.
+#
+# One record per figure:
+#   name      exact term as printed in the source
+#   value     as printed in the source (percent as 12.01, amounts in whole kroner)
+#   unit      percent | DKK
+#   source    URL where the value can be checked
+#   verified  date the value was last checked against the source
+#   status    verified | secondary | unverified | proposed
+#   note      optional
+#
+# Keys are the Danish terms in ASCII snake_case (æ→ae, ø→oe, å→aa).
+#
+# Caveat (2026-11-01): kroner amounts are the regulated 2027 values published by
+# Skatteministeriet. Deloitte and BDO report the government may freeze some
+# 2027 thresholds; re-check before relying on them late in 2026.
+
+# --- Salary tax ---------------------------------------------------------------
+
+am_bidrag:
+  name: Bidragssats (arbejdsmarkedsbidrag)
+  value: 8.0
+  unit: percent
+  source: https://svmn.dk/tal-og-metode/satser/satser-og-beloebsgraenser-i-lovgivningen/arbejdsmarkedsbidragsloven
+  verified: 2026-11-01
+  status: verified
+  note: AMBL § 1. Levied on gross salary before all other income taxes.
+
+personfradrag:
+  name: Personfradrag
+  value: 55700
+  unit: DKK
+  source: https://svmn.dk/tal-og-metode/satser/satser-og-beloebsgraenser-i-lovgivningen/personskatteloven
+  verified: 2026-11-01
+  status: verified
+  note: PSL § 10, stk. 1. Persons aged 18 and over.
+
+bundskat:
+  name: Bundskatteprocent
+  value: 12.01
+  unit: percent
+  source: https://svmn.dk/tal-og-metode/satser/satser-og-beloebsgraenser-i-lovgivningen/personskatteloven
+  verified: 2026-11-01
+  status: verified
+  note: PSL § 6. Base is personal income plus positive net capital income.
+
+mellemskat:
+  name: Mellemskatteprocent
+  value: 7.5
+  unit: percent
+  source: https://svmn.dk/tal-og-metode/satser/satser-og-beloebsgraenser-i-lovgivningen/personskatteloven
+  verified: 2026-11-01
+  status: verified
+  note: PSL § 7. Called topskat up to and including 2025.
+
+mellemskat_graense:
+  name: Mellemskattegrænse
+  value: 659900
+  unit: DKK
+  source: https://svmn.dk/tal-og-metode/satser/satser-og-beloebsgraenser-i-lovgivningen/personskatteloven
+  verified: 2026-11-01
+  status: verified
+  note: PSL § 7, stk. 2. Personal income after AM-bidrag.
+
+mellemskat_kapitalindkomst_bundfradrag:
+  name: Bundfradrag for positiv nettokapitalindkomst i mellemskattegrundlag (ugifte)
+  value: 56600
+  unit: DKK
+  source: https://svmn.dk/tal-og-metode/satser/satser-og-beloebsgraenser-i-lovgivningen/personskatteloven
+  verified: 2026-11-01
+  status: verified
+  note: PSL § 7, stk. 1. Positive net capital income above this counts in the mellemskat base. Married couples 113.200 kr.
+
+topskat:
+  name: Topskatteprocent
+  value: 7.5
+  unit: percent
+  source: https://svmn.dk/tal-og-metode/satser/satser-og-beloebsgraenser-i-lovgivningen/personskatteloven
+  verified: 2026-11-01
+  status: verified
+  note: PSL § 7 a. New bracket from 2026; not the same as the pre-2026 topskat.
+
+topskat_graense:
+  name: Topskattegrænse
+  value: 800500
+  unit: DKK
+  source: https://svmn.dk/tal-og-metode/satser/satser-og-beloebsgraenser-i-lovgivningen/personskatteloven
+  verified: 2026-11-01
+  status: verified
+  note: PSL § 7 a, stk. 2.
+
+toptopskat:
+  name: Toptopskatteprocent
+  value: 5
+  unit: percent
+  source: https://svmn.dk/tal-og-metode/satser/satser-og-beloebsgraenser-i-lovgivningen/personskatteloven
+  verified: 2026-11-01
+  status: verified
+  note: PSL § 8.
+
+toptopskat_graense:
+  name: Toptopskattegrænse
+  value: 2668200
+  unit: DKK
+  source: https://svmn.dk/tal-og-metode/satser/satser-og-beloebsgraenser-i-lovgivningen/personskatteloven
+  verified: 2026-11-01
+  status: verified
+  note: PSL § 8, stk. 2.
+
+skatteloft:
+  name: Skatteloft for personlig indkomst
+  value: 44.57
+  unit: percent
+  source: https://svmn.dk/tal-og-metode/satser/satser-og-beloebsgraenser-i-lovgivningen/personskatteloven
+  verified: 2026-11-01
+  status: verified
+  note: PSL § 19, stk. 1. Was 52,07 % in 2025, before the reform.
+
+skatteloft_kapitalindkomst:
+  name: Skatteloft for positiv nettokapitalindkomst
+  value: 42.0
+  unit: percent
+  source: https://svmn.dk/tal-og-metode/satser/satser-og-beloebsgraenser-i-lovgivningen/personskatteloven
+  verified: 2026-11-01
+  status: verified
+  note: PSL § 19, stk. 2.
+
+beskaeftigelsesfradrag:
+  name: Beskæftigelsesfradrag
+  value: 12.75
+  unit: percent
+  source: https://svmn.dk/tal-og-metode/satser/satser-og-beloebsgraenser-i-lovgivningen/ligningsloven
+  verified: 2026-11-01
+  status: verified
+  note: LL § 9 J, stk. 2.
+
+beskaeftigelsesfradrag_max:
+  name: Maksimalt beskæftigelsesfradrag
+  value: 65200
+  unit: DKK
+  source: https://svmn.dk/tal-og-metode/satser/satser-og-beloebsgraenser-i-lovgivningen/ligningsloven
+  verified: 2026-11-01
+  status: verified
+  note: LL § 9 J, stk. 2.
+
+jobfradrag:
+  name: Jobfradrag
+  value: 4.5
+  unit: percent
+  source: https://svmn.dk/tal-og-metode/satser/satser-og-beloebsgraenser-i-lovgivningen/ligningsloven
+  verified: 2026-11-01
+  status: verified
+  note: LL § 9 K, stk. 2. Applies to the base above jobfradrag_bundgraense.
+
+jobfradrag_bundgraense:
+  name: Bundgrænse for grundlaget for beregning af jobfradrag
+  value: 242100
+  unit: DKK
+  source: https://svmn.dk/tal-og-metode/satser/satser-og-beloebsgraenser-i-lovgivningen/ligningsloven
+  verified: 2026-11-01
+  status: verified
+  note: LL § 9 K, stk. 1.
+
+jobfradrag_max:
+  name: Maksimalt jobfradrag
+  value: 3200
+  unit: DKK
+  source: https://svmn.dk/tal-og-metode/satser/satser-og-beloebsgraenser-i-lovgivningen/ligningsloven
+  verified: 2026-11-01
+  status: verified
+  note: LL § 9 K, stk. 2.
+
+# --- Pension ------------------------------------------------------------------
+
+ratepension_max_indskud:
+  name: Maks. årligt indskud på ratepension og ophørende alderspension
+  value: 70700
+  unit: DKK
+  source: https://svmn.dk/tal-og-metode/satser/satser-og-beloebsgraenser-i-lovgivningen/pensionsbeskatningsloven
+  verified: 2026-11-01
+  status: verified
+  note: PBL § 16, stk. 2. Covers employer and own contributions together.
+
+aldersopsparing_max_indskud:
+  name: Aldersopsparing, grundbeløb (mere end 7 år til folkepensionsalder)
+  value: 10200
+  unit: DKK
+  source: https://svmn.dk/tal-og-metode/satser/satser-og-beloebsgraenser-i-lovgivningen/pensionsbeskatningsloven
+  verified: 2026-11-01
+  status: verified
+
+aldersopsparing_max_indskud_7aar:
+  name: Aldersopsparing, maks. indskud (maks. 7 år til folkepensionsalder)
+  value: 66000
+  unit: DKK
+  source: https://svmn.dk/tal-og-metode/satser/satser-og-beloebsgraenser-i-lovgivningen/pensionsbeskatningsloven
+  verified: 2026-11-01
+  status: verified
+  note: The 10-års-reglen can limit this to the grundbeløb; see source.
+
+pal_skat:
+  name: Skat af det skattepligtige afkast (pensionsafkastskat)
+  value: 15.3
+  unit: percent
+  source: https://www.retsinformation.dk/eli/lta/2023/12
+  verified: 2026-11-01
+  status: verified
+  note: PAL § 2 in LBK nr 12 af 06/01/2023, no end date. Later amendments (LOV 718/2023, 1176/2024, 752/2025, 1642/2025) do not touch § 2. The svmn.dk table has no 2027 column yet.
+
+# --- Investments --------------------------------------------------------------
+
+aktieindkomst_lav_sats:
+  name: Skattesats for aktieindkomst, laveste trin
+  value: 27
+  unit: percent
+  source: https://svmn.dk/tal-og-metode/satser/satser-og-beloebsgraenser-i-lovgivningen/personskatteloven
+  verified: 2026-11-01
+  status: verified
+  note: PSL § 8 a.
+
+aktieindkomst_hoej_sats:
+  name: Skattesats for aktieindkomst, højeste trin
+  value: 42
+  unit: percent
+  source: https://svmn.dk/tal-og-metode/satser/satser-og-beloebsgraenser-i-lovgivningen/personskatteloven
+  verified: 2026-11-01
+  status: verified
+  note: PSL § 8 a.
+
+aktieindkomst_progressionsgraense:
+  name: Progressionsgrænse for beskatning af aktieindkomst
+  value: 89600
+  unit: DKK
+  source: https://svmn.dk/tal-og-metode/satser/satser-og-beloebsgraenser-i-lovgivningen/personskatteloven
+  verified: 2026-11-01
+  status: verified
+  note: PSL § 8 a, stk. 1 og 2. Per person.
+
+aktiesparekonto_skat:
+  name: Skat af afkast på aktiesparekonto
+  value: 17
+  unit: percent
+  source: https://svmn.dk/tal-og-metode/satser/satser-og-beloebsgraenser-i-lovgivningen/aktiesparekontoloven
+  verified: 2026-11-01
+  status: verified
+  note: Taxed yearly on the change in value (lagerbeskatning).
+
+aktiesparekonto_indskudsloft:
+  name: Loft for indskud på aktiesparekonto
+  value: 179300
+  unit: DKK
+  source: https://svmn.dk/tal-og-metode/satser/satser-og-beloebsgraenser-i-lovgivningen/aktiesparekontoloven
+  verified: 2026-11-01
+  status: verified
+  note: Ceiling on total deposits, not yearly deposits. A proposal to raise it to 500.000 kr. is expected in 2027.
