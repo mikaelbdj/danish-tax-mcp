@@ -7,6 +7,7 @@ from mcp.server import MCPServer
 from mcp.server.mcpserver.exceptions import ToolError
 from pydantic import BaseModel
 
+from dk_tax.calc.salary import SalaryTax, estimate_salary_tax as _estimate
 from dk_tax.loader import Figure, Kommune, Status, load_kommuner, load_year, slug
 
 server = MCPServer(
@@ -47,6 +48,23 @@ def _load(year: int) -> dict[str, Figure]:
         return load_year(year)
     except LookupError as e:
         raise ToolError(str(e)) from e
+
+
+def _kommune(year: int, kommune: str) -> KommuneResult:
+    try:
+        table = load_kommuner(year)
+    except LookupError as e:
+        raise ToolError(str(e)) from e
+    key = slug(kommune)
+    if key not in table.kommuner:
+        raise ToolError(_unknown("kommune", key, list(table.kommuner)))
+    return KommuneResult(
+        year=year,
+        kommune=table.kommuner[key],
+        source=table.source,
+        verified=table.verified,
+        status=table.status,
+    )
 
 
 def _unknown(kind: str, wanted: str, known: list[str]) -> str:
@@ -92,18 +110,58 @@ def get_kommune(year: int, kommune: str) -> KommuneResult:
     Percentages as printed (24.52 means 24,52 %). Kirkeskat applies only to
     members of Folkekirken.
     """
+    return _kommune(year, kommune)
+
+
+class SalaryTaxResult(BaseModel):
+    tax: SalaryTax
+    kommune: KommuneResult
+
+
+@server.tool()
+def estimate_salary_tax(
+    year: int,
+    gross_salary: int,
+    kommune: str,
+    folkekirke_member: bool,
+    atp_own: int = 0,
+    atp_employer: int = 0,
+    pension_own: int = 0,
+    pension_employer: int = 0,
+    private_ratepension: int = 0,
+    other_personal_income: int = 0,
+    net_capital_income: int = 0,
+    other_deductions: int = 0,
+    within_15_years_of_pension: bool = False,
+) -> SalaryTaxResult:
+    """Estimate a single (unmarried) employee's Danish income tax for one year, with the full breakdown.
+
+    Use this instead of doing tax arithmetic yourself. All amounts are yearly DKK.
+    gross_salary includes bonus and RSU vests (taxed as salary). pension_own and
+    pension_employer are contributions to an employer-administered pension;
+    private_ratepension is what you pay into a ratepension yourself. other_deductions
+    covers other ligningsmæssige fradrag (befordring, union dues, ...).
+    Not covered: married couples, aktieindkomst, ejendomsværdiskat. The result lists
+    the source of every figure used; cite them with the income year. Not tax advice.
+    """
+    kommune_result = _kommune(year, kommune)
+    k = kommune_result.kommune
     try:
-        table = load_kommuner(year)
+        tax = _estimate(
+            year,
+            gross_salary,
+            kommuneskat=k.kommuneskat,
+            kirkeskat=k.kirkeskat if folkekirke_member else 0,
+            atp_own=atp_own,
+            atp_employer=atp_employer,
+            pension_own=pension_own,
+            pension_employer=pension_employer,
+            private_ratepension=private_ratepension,
+            other_personal_income=other_personal_income,
+            net_capital_income=net_capital_income,
+            other_deductions=other_deductions,
+            within_15_years_of_pension=within_15_years_of_pension,
+        )
     except LookupError as e:
         raise ToolError(str(e)) from e
-    key = slug(kommune)
-    if key not in table.kommuner:
-        raise ToolError(_unknown("kommune", key, list(table.kommuner)))
-    return KommuneResult(
-        year=year,
-        kommune=table.kommuner[key],
-        source=table.source,
-        verified=table.verified,
-        status=table.status,
-    )
-
+    return SalaryTaxResult(tax=tax, kommune=kommune_result)

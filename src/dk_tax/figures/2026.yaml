@@ -249,3 +249,50 @@ aktiesparekonto_indskudsloft:
   verified: 2026-11-01
   status: verified
   note: Ceiling on total deposits, not yearly deposits. A proposal to raise it to 500.000 kr. is expected in 2027.
+
+# --- Deductions and compensation --------------------------------------------
+
+ekstra_pensionsfradrag:
+  name: Ekstra pensionsfradrag indtil 15 år før folkepensionsalderen
+  value: 12
+  unit: percent
+  source: https://svmn.dk/tal-og-metode/satser/satser-og-beloebsgraenser-i-lovgivningen/ligningsloven
+  verified: 2026-11-02
+  status: verified
+  note: LL § 9 L. Ligningsmæssigt fradrag, so it reduces only the kommune/kirke base.
+
+ekstra_pensionsfradrag_15aar:
+  name: Ekstra pensionsfradrag fra 15 år før folkepensionsalderen
+  value: 32
+  unit: percent
+  source: https://svmn.dk/tal-og-metode/satser/satser-og-beloebsgraenser-i-lovgivningen/ligningsloven
+  verified: 2026-11-02
+  status: verified
+  note: LL § 9 L.
+
+ekstra_pensionsfradrag_max_grundlag:
+  name: Maksimalt grundlag for ekstra pensionsfradrag
+  value: 87800
+  unit: DKK
+  source: https://svmn.dk/tal-og-metode/satser/satser-og-beloebsgraenser-i-lovgivningen/ligningsloven
+  verified: 2026-11-02
+  status: verified
+  note: LL § 9 L, stk. 1. Cap on the base, not on the deduction.
+
+negativ_kapitalindkomst_kompensation:
+  name: Kompensationsprocent for negativ nettokapitalindkomst
+  value: 8
+  unit: percent
+  source: https://svmn.dk/tal-og-metode/satser/satser-og-beloebsgraenser-i-lovgivningen/personskatteloven
+  verified: 2026-11-02
+  status: verified
+  note: PSL § 11. Reduction in tax for negative net capital income up to the beløbsgrænse.
+
+negativ_kapitalindkomst_kompensation_graense:
+  name: Beløbsgrænse for kompensation
+  value: 50000
+  unit: DKK
+  source: https://svmn.dk/tal-og-metode/satser/satser-og-beloebsgraenser-i-lovgivningen/personskatteloven
+  verified: 2026-11-02
+  status: verified
+  note: PSL § 11, stk. 1. Not regulated.

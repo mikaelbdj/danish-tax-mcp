@@ -1,0 +1,169 @@
+# Danish personal tax figures, income year 2023.
+#
+# One record per figure:
+#   name      exact term as printed in the source
+#   value     as printed in the source (percent as 12.01, amounts in whole kroner)
+#   unit      percent | DKK
+#   source    URL where the value can be checked
+#   verified  date the value was last checked against the source
+#   status    verified | secondary | unverified | proposed
+#   note      optional
+#
+# Keys are the Danish terms in ASCII snake_case (æ→ae, ø→oe, å→aa).
+#
+# 2023 is kept as the year of svmn.dk's latest official worked example
+# (pre-reform structure, like 2025); it holds only what that example needs.
+
+# --- Salary tax ---------------------------------------------------------------
+
+am_bidrag:
+  name: Arbejdsmarkedsbidrag
+  value: 8
+  unit: percent
+  source: https://svmn.dk/tal-og-metode/satser/tidsserier/centrale-skattesatser-i-skattelovgivningen-2018-2024
+  verified: 2026-11-02
+  status: verified
+
+personfradrag:
+  name: Almindeligt personfradrag, stat og kommune
+  value: 48000
+  unit: DKK
+  source: https://svmn.dk/tal-og-metode/satser/tidsserier/centrale-beloebsgraenser-i-skattelovgivningen-2018-2024
+  verified: 2026-11-02
+  status: verified
+
+bundskat:
+  name: Bundskat
+  value: 12.06
+  unit: percent
+  source: https://svmn.dk/tal-og-metode/satser/tidsserier/centrale-skattesatser-i-skattelovgivningen-2018-2024
+  verified: 2026-11-02
+  status: verified
+
+topskat:
+  name: Topskat
+  value: 15
+  unit: percent
+  source: https://svmn.dk/tal-og-metode/satser/tidsserier/centrale-skattesatser-i-skattelovgivningen-2018-2024
+  verified: 2026-11-02
+  status: verified
+  note: The pre-reform topskat.
+
+topskat_graense:
+  name: Beløbsgrænse ved topskat
+  value: 568900
+  unit: DKK
+  source: https://svmn.dk/tal-og-metode/satser/tidsserier/centrale-beloebsgraenser-i-skattelovgivningen-2018-2024
+  verified: 2026-11-02
+  status: verified
+
+topskat_kapitalindkomst_bundfradrag:
+  name: Bundfradrag i positiv nettokapitalindkomst i topskattegrundlag for ugifte
+  value: 48800
+  unit: DKK
+  source: https://svmn.dk/tal-og-metode/satser/tidsserier/centrale-beloebsgraenser-i-skattelovgivningen-2018-2024
+  verified: 2026-11-02
+  status: verified
+
+skatteloft:
+  name: Skatteloft, personlig indkomst
+  value: 52.07
+  unit: percent
+  source: https://svmn.dk/tal-og-metode/satser/tidsserier/centrale-skattesatser-i-skattelovgivningen-2018-2024
+  verified: 2026-11-02
+  status: verified
+
+skatteloft_kapitalindkomst:
+  name: Skatteloft, positiv nettokapitalindkomst
+  value: 42
+  unit: percent
+  source: https://svmn.dk/tal-og-metode/satser/tidsserier/centrale-skattesatser-i-skattelovgivningen-2018-2024
+  verified: 2026-11-02
+  status: verified
+
+beskaeftigelsesfradrag:
+  name: Beskæftigelsesfradrag
+  value: 10.65
+  unit: percent
+  source: https://svmn.dk/tal-og-metode/satser/tidsserier/centrale-skattesatser-i-skattelovgivningen-2018-2024
+  verified: 2026-11-02
+  status: verified
+
+beskaeftigelsesfradrag_max:
+  name: Maks. beskæftigelsesfradrag
+  value: 45600
+  unit: DKK
+  source: https://svmn.dk/tal-og-metode/satser/tidsserier/centrale-beloebsgraenser-i-skattelovgivningen-2018-2024
+  verified: 2026-11-02
+  status: verified
+
+jobfradrag:
+  name: Jobfradrag
+  value: 4.5
+  unit: percent
+  source: https://svmn.dk/tal-og-metode/satser/tidsserier/centrale-skattesatser-i-skattelovgivningen-2018-2024
+  verified: 2026-11-02
+  status: verified
+
+jobfradrag_bundgraense:
+  name: Bundgrænse for grundlaget for beregning af jobfradrag
+  value: 208700
+  unit: DKK
+  source: https://svmn.dk/tal-og-metode/satser/tidsserier/centrale-beloebsgraenser-i-skattelovgivningen-2018-2024
+  verified: 2026-11-02
+  status: verified
+
+jobfradrag_max:
+  name: Maks. jobfradrag
+  value: 2700
+  unit: DKK
+  source: https://svmn.dk/tal-og-metode/satser/tidsserier/centrale-beloebsgraenser-i-skattelovgivningen-2018-2024
+  verified: 2026-11-02
+  status: verified
+
+# --- Deductions and compensation --------------------------------------------
+
+ekstra_pensionsfradrag:
+  name: Ekstra pensionsfradrag indtil 15 år før folkepensionsalderen
+  value: 12
+  unit: percent
+  source: https://svmn.dk/tal-og-metode/satser/tidsserier/centrale-skattesatser-i-skattelovgivningen-2018-2024
+  verified: 2026-11-02
+  status: verified
+  note: LL § 9 L. Ligningsmæssigt fradrag, so it reduces only the kommune/kirke base.
+
+ekstra_pensionsfradrag_15aar:
+  name: Ekstra pensionsfradrag fra 15 år før folkepensionsalderen
+  value: 32
+  unit: percent
+  source: https://svmn.dk/tal-og-metode/satser/tidsserier/centrale-skattesatser-i-skattelovgivningen-2018-2024
+  verified: 2026-11-02
+  status: verified
+  note: LL § 9 L.
+
+ekstra_pensionsfradrag_max_grundlag:
+  name: Maksimalt grundlag for ekstra pensionsfradrag
+  value: 77900
+  unit: DKK
+  source: https://svmn.dk/tal-og-metode/satser/tidsserier/centrale-beloebsgraenser-i-skattelovgivningen-2018-2024
+  verified: 2026-11-02
+  status: verified
+  note: LL § 9 L, stk. 1. Cap on the base, not on the deduction.
+
+negativ_kapitalindkomst_kompensation:
+  name: Kompensationsprocent for negativ nettokapitalindkomst
+  value: 8
+  unit: percent
+  source: https://www.retsinformation.dk/eli/lta/2021/1284
+  verified: 2026-11-02
+  status: verified
+  note: PSL § 11. Reduction in tax for negative net capital income up to the beløbsgrænse.
+
+negativ_kapitalindkomst_kompensation_graense:
+  name: Beløbsgrænse for kompensation
+  value: 50000
+  unit: DKK
+  source: https://www.retsinformation.dk/eli/lta/2021/1284
+  verified: 2026-11-02
+  status: verified
+  note: PSL § 11, stk. 1. Not regulated.
