@@ -119,6 +119,7 @@ def estimate_payslip(
     pension_own_pct: Amount = 0,
     pension_employer_pct: Amount = 0,
     bonus: Amount = 0,
+    bonus_payments: int = 1,
     bonus_has_pension: bool = False,
     share_compensation: Amount = 0,
     include_bonus_in_forskud: bool = True,
@@ -134,7 +135,8 @@ def estimate_payslip(
     """Skattekort, a normal month's and a bonus month's payslip, and the year-end result.
 
     monthly_salary includes the employee's own pension share. Pension percentages are of
-    monthly_salary. bonus is paid in one month. share_compensation is the year's RSU vest value.
+    monthly_salary. bonus is the year's total, paid in bonus_payments equal parts (4 = quarterly);
+    bonus_month shows one of those months. share_compensation is the year's RSU vest value.
     The include_* flags say what is entered in the forskudsopgørelse; the year-end result
     always uses all income. share_withholding: "none" (B-income), "traekprocent" or "fixed"
     (withhold-to-cover at share_withholding_rate percent), spread over vests_per_year vests.
@@ -218,8 +220,10 @@ def estimate_payslip(
         )
 
     normal = month(salary, salary)
-    bonus_month = month(salary + bonus_, salary + pensionable_bonus) if bonus_ else None
-    withheld_months = [normal] * (11 if bonus_month else 12) + ([bonus_month] if bonus_month else [])
+    n_bonus = bonus_payments if bonus_ else 0
+    part = bonus_ / n_bonus if n_bonus else Decimal(0)
+    bonus_month = month(salary + part, salary + (part if bonus_has_pension else 0)) if n_bonus else None
+    withheld_months = [normal] * (12 - n_bonus) + [bonus_month] * n_bonus
     withheld = sum((m.am_bidrag + m.a_skat for m in withheld_months), Decimal(0)) + b_skat
 
     share_vest = None

@@ -124,3 +124,14 @@ def test_withhold_to_cover_at_a_fixed_high_rate_leaves_less_restskat():
 def test_fixed_withholding_needs_a_rate():
     with pytest.raises(ValueError, match="share_withholding_rate"):
         estimate_payslip(2026, 60_000, kommuneskat=AARHUS, share_compensation=1, share_withholding="fixed")
+
+
+def test_quarterly_bonus_same_year_total_as_one_payment():
+    """A bonus split over 4 payments: each bonus month gets a quarter, and since every month's
+    fradrag is used by the salary, the year's withholding is unchanged."""
+    args = dict(kommuneskat=AARHUS, pension_own_pct=4, pension_employer_pct=8, bonus=125_000)
+    once = estimate_payslip(2026, 80_000, **args)
+    quarterly = estimate_payslip(2026, 80_000, bonus_payments=4, **args)
+    assert quarterly.bonus_month.gross == 80_000 + Decimal(125_000) / 4
+    assert quarterly.year_end.withheld == once.year_end.withheld
+    assert quarterly.normal_month == once.normal_month

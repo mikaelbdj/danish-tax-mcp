@@ -194,6 +194,7 @@ def estimate_payslip(
     pension_own_pct: float = 0,
     pension_employer_pct: float = 0,
     bonus: int = 0,
+    bonus_payments: int = 1,
     bonus_has_pension: bool = False,
     share_compensation: int = 0,
     include_bonus_in_forskud: bool = True,
@@ -214,7 +215,7 @@ def estimate_payslip(
     bonus and the shares are entered in the forskudsopgørelse; call twice to compare.
     monthly_salary: DKK per month INCLUDING the employee's own pension share.
     pension_*_pct: percent of monthly_salary (e.g. 4 and 8).
-    bonus: DKK, paid in one month. share_compensation: the year's RSU vest value in DKK.
+    bonus: the year's total bonus in DKK, paid in bonus_payments equal parts (4 = quarterly). share_compensation: the year's RSU vest value in DKK.
       Shares are B-income: the employer withholds nothing, so if they are left out of the
       forskudsopgørelse the tax comes as restskat (year_end.restskat > 0); paying it
       voluntarily before 31 December avoids interest.
@@ -236,6 +237,7 @@ def estimate_payslip(
             pension_own_pct=str(pension_own_pct),
             pension_employer_pct=str(pension_employer_pct),
             bonus=bonus,
+            bonus_payments=bonus_payments,
             bonus_has_pension=bonus_has_pension,
             share_compensation=share_compensation,
             include_bonus_in_forskud=include_bonus_in_forskud,
