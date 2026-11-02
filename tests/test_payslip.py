@@ -86,3 +86,41 @@ def test_shares_in_forskud_lower_normal_pay_and_avoid_restskat():
 def test_pre_reform_years_are_rejected():
     with pytest.raises(ValueError, match="2026"):
         estimate_payslip(2025, 60_000, kommuneskat=AARHUS)
+
+
+def test_withhold_to_cover_shares_barely_touch_normal_pay():
+    """Employer keeps back shares to cover tax at vest (withhold-to-cover). The vest is then
+    A-income taxed in shares, so cash months change only through the skattekort. With the
+    shares in the forskudsopgørelse, § 9 backs the fradrag out so that the year's withholding
+    equals the year's tax: the marginal tax on the shares shows up as a smaller fradrag on
+    the salary, and only the rounding-up over-withholding remains."""
+    args = dict(kommuneskat=AARHUS, pension_own_pct=4, pension_employer_pct=8, share_compensation=200_000)
+    b_income = estimate_payslip(2026, 60_000, **args)  # share_withholding="none"
+    cover = estimate_payslip(2026, 60_000, share_withholding="traekprocent", **args)
+    no_shares = estimate_payslip(2026, 60_000, kommuneskat=AARHUS, pension_own_pct=4, pension_employer_pct=8)
+
+    assert cover.normal_month.til_udbetaling > b_income.normal_month.til_udbetaling
+    assert no_shares.normal_month.til_udbetaling - cover.normal_month.til_udbetaling < 1_500
+    vest = cover.share_vest
+    assert vest.per_vest == 50_000  # 200.000 over 4 quarterly vests
+    assert vest.am_bidrag == 4_000
+    assert vest.a_skat == cover.traekprocent / Decimal(100) * (50_000 - 4_000)
+    assert cover.maanedsfradrag < no_shares.maanedsfradrag
+    assert -cover.a_indkomst_aar / 100 < cover.year_end.restskat <= 0
+
+    # Left out of the forskudsopgørelse, the vest is withheld at a trækprocent that knows
+    # nothing about it, below the marginal rate: restskat remains.
+    hidden = estimate_payslip(2026, 60_000, share_withholding="traekprocent", include_shares_in_forskud=False, **args)
+    assert 0 < hidden.year_end.restskat < 200_000 * Decimal("0.20")
+
+
+def test_withhold_to_cover_at_a_fixed_high_rate_leaves_less_restskat():
+    args = dict(kommuneskat=AARHUS, pension_own_pct=4, pension_employer_pct=8, share_compensation=200_000)
+    at_traek = estimate_payslip(2026, 60_000, share_withholding="traekprocent", **args)
+    at_56 = estimate_payslip(2026, 60_000, share_withholding="fixed", share_withholding_rate=56, **args)
+    assert at_56.year_end.restskat < at_traek.year_end.restskat
+
+
+def test_fixed_withholding_needs_a_rate():
+    with pytest.raises(ValueError, match="share_withholding_rate"):
+        estimate_payslip(2026, 60_000, kommuneskat=AARHUS, share_compensation=1, share_withholding="fixed")

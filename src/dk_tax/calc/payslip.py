@@ -13,7 +13,12 @@ Rules, with sources:
   - månedsfradrag): KSL §§ 46, 48; eIndkomst felt 13 definition.
 - Shares (RSU, LL § 16) are B-income: no withholding by the employer (skat.dk, 'Skat af
   aktieløn og medarbejderaktier'); if entered in the forskudsopgørelse they raise the
-  forskudsskat and so shrink the fradrag.
+  forskudsskat and so shrink the fradrag. share_withholding="none".
+- Withhold-to-cover (employer keeps back shares to pay the tax, as private companies do):
+  modelled as A-income at each vest, AM-bidrag plus A-skat at the trækprocent
+  (share_withholding="traekprocent") or at a rate the employer states ("fixed"). No
+  official rule was found for this; it follows the employer's description. The month's
+  fradrag is assumed used by the salary, so none is applied to the vest.
 
 Assumptions (not settled by current official text; from SKAT's pre-reform guide
 'Beregning af personlige indkomstskatter', F.3.3.1-F.3.3.3):
@@ -25,6 +30,7 @@ Payslip amounts are exact (no payroll rounding to 10 kr. as in JV A.B.4.1.1.2.6)
 """
 
 from decimal import ROUND_CEILING, ROUND_DOWN, ROUND_FLOOR, Decimal
+from typing import Literal
 
 from pydantic import BaseModel
 
@@ -41,6 +47,16 @@ class MonthPayslip(BaseModel):
     am_bidrag: Decimal
     a_skat: Decimal
     til_udbetaling: Decimal
+
+
+class ShareVest(BaseModel):
+    """One vest under withhold-to-cover: tax paid by keeping back shares, not from cash."""
+
+    per_vest: Decimal
+    am_bidrag: Decimal
+    a_skat: Decimal
+    net_value: Decimal
+    """Value of the shares delivered after the withheld shares."""
 
 
 class YearEnd(BaseModel):
@@ -66,6 +82,7 @@ class Payslip(BaseModel):
     """Forskudsskat the trækprocent cannot cover (paid as B-skat instalments)."""
     normal_month: MonthPayslip
     bonus_month: MonthPayslip | None
+    share_vest: ShareVest | None = None
     year_end: YearEnd
     all_verified: bool
     sources: dict[str, FigureRef]
@@ -106,6 +123,9 @@ def estimate_payslip(
     share_compensation: Amount = 0,
     include_bonus_in_forskud: bool = True,
     include_shares_in_forskud: bool = True,
+    share_withholding: Literal["none", "traekprocent", "fixed"] = "none",
+    share_withholding_rate: Amount | None = None,
+    vests_per_year: int = 4,
     atp_full_time: bool = True,
     net_capital_income: Amount = 0,
     other_deductions: Amount = 0,
@@ -116,10 +136,13 @@ def estimate_payslip(
     monthly_salary includes the employee's own pension share. Pension percentages are of
     monthly_salary. bonus is paid in one month. share_compensation is the year's RSU vest value.
     The include_* flags say what is entered in the forskudsopgørelse; the year-end result
-    always uses all income.
+    always uses all income. share_withholding: "none" (B-income), "traekprocent" or "fixed"
+    (withhold-to-cover at share_withholding_rate percent), spread over vests_per_year vests.
     """
     if year < REFORM_YEAR:
         raise ValueError(f"Payslip rules are implemented from income year {REFORM_YEAR}")
+    if share_withholding == "fixed" and share_withholding_rate is None:
+        raise ValueError('share_withholding="fixed" needs share_withholding_rate (percent)')
     D = lambda x: Decimal(str(x))  # noqa: E731
     figures = load_year(year)
     salary, bonus_ = D(monthly_salary), D(bonus)
@@ -162,6 +185,9 @@ def estimate_payslip(
     # Fradrag (KSL-bek. § 9) and, if it would be negative, a higher percentage up to the cap (§ 12)
     a_aar = forskud.am_bidrag_grundlag - forskud.am_bidrag
     forskudsskat = forskud.skat_i_alt - forskud.am_bidrag
+    if share_withholding != "none":  # withheld shares are A-income with AM-bidrag withheld
+        a_aar += D(share_compensation if include_shares_in_forskud else 0) - forskud.am_bidrag_aktieloen
+        forskudsskat -= forskud.am_bidrag_aktieloen
     fradrag = skattekort_fradrag(a_aar, forskudsskat, unrounded)
     b_skat = Decimal(0)
     if fradrag < 0:
@@ -196,6 +222,15 @@ def estimate_payslip(
     withheld_months = [normal] * (11 if bonus_month else 12) + ([bonus_month] if bonus_month else [])
     withheld = sum((m.am_bidrag + m.a_skat for m in withheld_months), Decimal(0)) + b_skat
 
+    share_vest = None
+    if share_withholding != "none" and D(share_compensation) > 0:
+        per_vest = D(share_compensation) / vests_per_year
+        rate = Decimal(traek) if share_withholding == "traekprocent" else D(share_withholding_rate)
+        vest_am = am_rate * per_vest
+        vest_skat = rate / 100 * (per_vest - vest_am)
+        share_vest = ShareVest(per_vest=per_vest, am_bidrag=vest_am, a_skat=vest_skat, net_value=per_vest - vest_am - vest_skat)
+        withheld += vests_per_year * (vest_am + vest_skat)
+
     sources = {**forskud.sources, **actual.sources}
     for key in used:
         f = figures[key]
@@ -211,6 +246,7 @@ def estimate_payslip(
         b_skat_aar=b_skat,
         normal_month=normal,
         bonus_month=bonus_month,
+        share_vest=share_vest,
         year_end=YearEnd(withheld=withheld, actual_tax=actual.skat_i_alt, restskat=actual.skat_i_alt - withheld),
         all_verified=all(ref.status == "verified" for ref in sources.values()),
         sources=sources,

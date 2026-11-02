@@ -2,6 +2,7 @@
 
 from datetime import date
 from difflib import get_close_matches
+from typing import Literal
 
 from mcp.server import MCPServer
 from mcp.server.mcpserver.exceptions import ToolError
@@ -197,6 +198,9 @@ def estimate_payslip(
     share_compensation: int = 0,
     include_bonus_in_forskud: bool = True,
     include_shares_in_forskud: bool = True,
+    share_withholding: Literal["none", "traekprocent", "fixed"] = "none",
+    share_withholding_rate: float | None = None,
+    vests_per_year: int = 4,
     atp_full_time: bool = True,
     net_capital_income: int = 0,
     other_deductions: int = 0,
@@ -214,6 +218,10 @@ def estimate_payslip(
       Shares are B-income: the employer withholds nothing, so if they are left out of the
       forskudsopgørelse the tax comes as restskat (year_end.restskat > 0); paying it
       voluntarily before 31 December avoids interest.
+    share_withholding: "none" = shares are B-income, nothing withheld (skat.dk's general rule);
+      "traekprocent" = the employer keeps back shares to cover the tax at the skattekort's
+      percentage (withhold-to-cover, common in private companies); "fixed" = at
+      share_withholding_rate percent. Ask the employer which applies; see share_vest.
     Cite the sources with the income year and flag any figure that is not 'verified'.
     Assumptions are listed in dk_tax.calc.payslip. Not tax advice.
     """
@@ -232,6 +240,9 @@ def estimate_payslip(
             share_compensation=share_compensation,
             include_bonus_in_forskud=include_bonus_in_forskud,
             include_shares_in_forskud=include_shares_in_forskud,
+            share_withholding=share_withholding,
+            share_withholding_rate=None if share_withholding_rate is None else str(share_withholding_rate),
+            vests_per_year=vests_per_year,
             atp_full_time=atp_full_time,
             net_capital_income=net_capital_income,
             other_deductions=other_deductions,

@@ -91,3 +91,12 @@ async def test_estimate_payslip_rejects_2025():
     result = await call("estimate_payslip", year=2025, monthly_salary=60_000, kommune="Aarhus", folkekirke_member=False)
     assert result.is_error
     assert "2026" in result.content[0].text
+
+
+async def test_estimate_payslip_withhold_to_cover():
+    result = await call(
+        "estimate_payslip", year=2026, monthly_salary=60_000, kommune="Aarhus", folkekirke_member=False,
+        share_compensation=200_000, share_withholding="traekprocent",
+    )
+    assert not result.is_error
+    assert Decimal(result.structured_content["payslip"]["share_vest"]["per_vest"]) == 50_000
