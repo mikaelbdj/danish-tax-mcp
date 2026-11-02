@@ -16,19 +16,13 @@ from pathlib import Path
 import openpyxl
 import yaml
 
+from dk_tax.loader import slug
+
 OUT_DIR = Path(__file__).parent.parent / "src" / "dk_tax" / "figures" / "kommuner"
 EXPECTED_KOMMUNER = 98
 
 # Column positions in the svmn.dk sheet (0-based).
 COL_NAVN, COL_KODE, COL_SKAT, COL_KIRKE, COL_NEDSLAG, COL_GRUNDSKYLD = 0, 2, 5, 6, 7, 9
-
-
-def slug(name: str) -> str:
-    """'Lyngby-Taarbæk' -> 'lyngby_taarbaek' (same ASCII rule as the figure keys)."""
-    s = name.lower()
-    for a, b in (("æ", "ae"), ("ø", "oe"), ("å", "aa"), ("-", "_"), (" ", "_"), (".", "")):
-        s = s.replace(a, b)
-    return s
 
 
 def read_rows(xlsx: Path) -> list[tuple]:
