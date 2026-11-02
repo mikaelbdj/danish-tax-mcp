@@ -19,7 +19,7 @@ async def test_tool_surface():
     # Renaming or removing a tool breaks permission rules and Claude's habits: make it a conscious change.
     async with Client(server) as client:
         tools = {t.name: t for t in (await client.list_tools()).tools}
-    assert set(tools) == {"list_figures", "get_figures", "get_kommune", "estimate_salary_tax"}
+    assert set(tools) == {"list_figures", "get_figures", "get_kommune", "estimate_salary_tax", "estimate_payslip"}
     assert set(tools["get_figures"].input_schema["properties"]) == {"year", "keys"}
 
 
@@ -74,3 +74,20 @@ async def test_estimate_salary_tax_full_time_atp_by_default():
     tax = result.structured_content["tax"]
     assert tax["am_bidrag_grundlag"] == str(900_000 - 99 * 12)  # own ATP is kept out of the AM-bidrag base
     assert tax["sources"]["atp_loenmodtager_maaned"]["status"] == "verified"
+
+
+async def test_estimate_payslip_tool():
+    result = await call(
+        "estimate_payslip", year=2026, monthly_salary=60_000, kommune="Aarhus", folkekirke_member=False,
+        pension_own_pct=4, pension_employer_pct=8,
+    )
+    assert not result.is_error
+    p = result.structured_content["payslip"]
+    assert Decimal(p["normal_month"]["pension_own"]) == 2400  # 4 % of 60.000
+    assert 30 < p["traekprocent"] < 50
+
+
+async def test_estimate_payslip_rejects_2025():
+    result = await call("estimate_payslip", year=2025, monthly_salary=60_000, kommune="Aarhus", folkekirke_member=False)
+    assert result.is_error
+    assert "2026" in result.content[0].text

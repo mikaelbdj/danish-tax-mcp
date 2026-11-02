@@ -7,6 +7,8 @@ from mcp.server import MCPServer
 from mcp.server.mcpserver.exceptions import ToolError
 from pydantic import BaseModel
 
+from dk_tax.calc.payslip import Payslip
+from dk_tax.calc.payslip import estimate_payslip as _payslip
 from dk_tax.calc.salary import SalaryTax
 from dk_tax.calc.salary import estimate_salary_tax as _estimate
 from dk_tax.loader import Figure, Kommune, Status, load_kommuner, load_year, slug
@@ -175,3 +177,66 @@ def estimate_salary_tax(
     except LookupError as e:
         raise ToolError(str(e)) from e
     return SalaryTaxResult(tax=tax, kommune=kommune_result)
+
+
+class PayslipResult(BaseModel):
+    payslip: Payslip
+    kommune: KommuneResult
+
+
+@server.tool()
+def estimate_payslip(
+    year: int,
+    monthly_salary: int,
+    kommune: str,
+    folkekirke_member: bool,
+    pension_own_pct: float = 0,
+    pension_employer_pct: float = 0,
+    bonus: int = 0,
+    bonus_has_pension: bool = False,
+    share_compensation: int = 0,
+    include_bonus_in_forskud: bool = True,
+    include_shares_in_forskud: bool = True,
+    atp_full_time: bool = True,
+    net_capital_income: int = 0,
+    other_deductions: int = 0,
+    within_15_years_of_pension: bool = False,
+) -> PayslipResult:
+    """Predict the skattekort (trækprocent, månedsfradrag) and what is actually paid out in a
+    normal month and in the bonus month, plus the year-end restskat, from 2026 onwards.
+
+    Use this for questions about monthly take-home pay or what to enter in the
+    forskudsopgørelse. One scenario per call: the include_*_in_forskud flags say whether the
+    bonus and the shares are entered in the forskudsopgørelse; call twice to compare.
+    monthly_salary: DKK per month INCLUDING the employee's own pension share.
+    pension_*_pct: percent of monthly_salary (e.g. 4 and 8).
+    bonus: DKK, paid in one month. share_compensation: the year's RSU vest value in DKK.
+      Shares are B-income: the employer withholds nothing, so if they are left out of the
+      forskudsopgørelse the tax comes as restskat (year_end.restskat > 0); paying it
+      voluntarily before 31 December avoids interest.
+    Cite the sources with the income year and flag any figure that is not 'verified'.
+    Assumptions are listed in dk_tax.calc.payslip. Not tax advice.
+    """
+    kommune_result = _kommune(year, kommune)
+    k = kommune_result.kommune
+    try:
+        payslip = _payslip(
+            year,
+            monthly_salary,
+            kommuneskat=k.kommuneskat,
+            kirkeskat=k.kirkeskat if folkekirke_member else 0,
+            pension_own_pct=str(pension_own_pct),
+            pension_employer_pct=str(pension_employer_pct),
+            bonus=bonus,
+            bonus_has_pension=bonus_has_pension,
+            share_compensation=share_compensation,
+            include_bonus_in_forskud=include_bonus_in_forskud,
+            include_shares_in_forskud=include_shares_in_forskud,
+            atp_full_time=atp_full_time,
+            net_capital_income=net_capital_income,
+            other_deductions=other_deductions,
+            within_15_years_of_pension=within_15_years_of_pension,
+        )
+    except (LookupError, ValueError) as e:
+        raise ToolError(str(e)) from e
+    return PayslipResult(payslip=payslip, kommune=kommune_result)

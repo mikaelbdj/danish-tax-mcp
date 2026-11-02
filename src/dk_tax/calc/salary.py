@@ -52,6 +52,8 @@ class SalaryTax(BaseModel):
     year: int
     am_bidrag_grundlag: Decimal
     am_bidrag: Decimal
+    am_bidrag_aktieloen: Decimal = Decimal(0)
+    """AM-bidrag on share_compensation (B-income: not withheld by the employer)."""
     personlig_indkomst: Decimal
     beskaeftigelsesfradrag: Decimal
     jobfradrag: Decimal
@@ -66,11 +68,11 @@ class SalaryTax(BaseModel):
     toptopskat: Decimal
     indkomstskat: Decimal
     skat_i_alt: Decimal
-    """indkomstskat + AM-bidrag on the salary (AM-bidrag on pension is paid from the pension)."""
+    """indkomstskat + AM-bidrag on salary and shares (AM-bidrag on pension is paid from the pension)."""
     til_udbetaling: Decimal
-    """Salary paid out: gross_salary - pension_own - atp_own - skat_i_alt."""
+    """Cash after tax: gross_salary - pension_own - atp_own - skat_i_alt (shares themselves not counted)."""
     effektiv_skatteprocent: Decimal
-    """skat_i_alt as a percentage of gross_salary."""
+    """skat_i_alt as a percentage of gross_salary + share_compensation."""
     marginalskat: Decimal | None = None
     """Percentage of the next 1.000 kr. of gross salary that goes to skat_i_alt (pension unchanged)."""
     all_verified: bool
@@ -151,6 +153,7 @@ def estimate_salary_tax(
     pension_employer: Amount = 0,
     private_ratepension: Amount = 0,
     other_personal_income: Amount = 0,
+    share_compensation: Amount = 0,
     net_capital_income: Amount = 0,
     other_deductions: Amount = 0,
     within_15_years_of_pension: bool = False,
@@ -162,6 +165,9 @@ def estimate_salary_tax(
       your salary), excluding the employer's share. Bonus and RSU vests count as salary.
     pension_own/pension_employer: contributions to an employer-administered pension.
     private_ratepension: contributions you pay yourself (deducted in personlig indkomst).
+    share_compensation: value of shares received as pay (RSU vests, LL § 16) at market
+      value on the vesting date. B-income: 8 % AM-bidrag, then personlig indkomst; the
+      employer withholds nothing (skat.dk, 'Skat af aktieløn og medarbejderaktier').
     atp_full_time: use the statutory full-time ATP amounts instead of atp_own/atp_employer.
     other_deductions: other ligningsmæssige fradrag (befordring, union dues, ...).
     """
@@ -175,6 +181,7 @@ def estimate_salary_tax(
         pension_employer=pension_employer,
         private_ratepension=private_ratepension,
         other_personal_income=other_personal_income,
+        share_compensation=share_compensation,
         net_capital_income=net_capital_income,
         other_deductions=other_deductions,
         within_15_years_of_pension=within_15_years_of_pension,
@@ -198,6 +205,7 @@ def _compute(
     pension_employer: Amount,
     private_ratepension: Amount,
     other_personal_income: Amount,
+    share_compensation: Amount,
     net_capital_income: Amount,
     other_deductions: Amount,
     within_15_years_of_pension: bool,
@@ -215,7 +223,11 @@ def _compute(
     # AM-bidrag and personlig indkomst
     am_grundlag = D(gross_salary) - D(atp_own) - D(pension_own)
     am_bidrag = _kr(am_grundlag * f.rate("am_bidrag"))
-    personlig = am_grundlag - am_bidrag + D(other_personal_income) - D(private_ratepension)
+    # Shares are B-income: AM-bidrag (AMBL § 2, stk. 2), but outside the beskæftigelsesfradrag base.
+    am_aktieloen = _kr(D(share_compensation) * f.rate("am_bidrag"))
+    personlig = (
+        am_grundlag - am_bidrag + D(share_compensation) - am_aktieloen + D(other_personal_income) - D(private_ratepension)
+    )
 
     # Ligningsmæssige fradrag
     besk_grundlag = am_grundlag + atp + pension
@@ -255,12 +267,13 @@ def _compute(
         toptopskat = _pos(personlig - f.value("toptopskat_graense")) * f.rate("toptopskat")
 
     indkomstskat = kommune_kirke - kompensation + bundskat + mellemskat + topskat + toptopskat
-    skat_i_alt = _ore(indkomstskat + am_bidrag)
+    skat_i_alt = _ore(indkomstskat + am_bidrag + am_aktieloen)
     gross = D(gross_salary)
     return SalaryTax(
         year=year,
         am_bidrag_grundlag=am_grundlag,
         am_bidrag=am_bidrag,
+        am_bidrag_aktieloen=am_aktieloen,
         personlig_indkomst=personlig,
         beskaeftigelsesfradrag=besk,
         jobfradrag=job,
@@ -276,7 +289,7 @@ def _compute(
         indkomstskat=_ore(indkomstskat),
         skat_i_alt=skat_i_alt,
         til_udbetaling=_ore(gross - D(pension_own) - D(atp_own) - skat_i_alt),
-        effektiv_skatteprocent=_ore(skat_i_alt / gross * 100) if gross else Decimal(0),
+        effektiv_skatteprocent=_ore(skat_i_alt / (gross + D(share_compensation)) * 100) if gross else Decimal(0),
         all_verified=all(fig.status == "verified" for fig in f.used.values()),
         sources={
             key: FigureRef(source=fig.source, verified=fig.verified, status=fig.status) for key, fig in f.used.items()
