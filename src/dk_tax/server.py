@@ -7,7 +7,8 @@ from mcp.server import MCPServer
 from mcp.server.mcpserver.exceptions import ToolError
 from pydantic import BaseModel
 
-from dk_tax.calc.salary import SalaryTax, estimate_salary_tax as _estimate
+from dk_tax.calc.salary import SalaryTax
+from dk_tax.calc.salary import estimate_salary_tax as _estimate
 from dk_tax.loader import Figure, Kommune, Status, load_kommuner, load_year, slug
 
 server = MCPServer(
@@ -124,6 +125,7 @@ def estimate_salary_tax(
     gross_salary: int,
     kommune: str,
     folkekirke_member: bool,
+    atp_full_time: bool = True,
     atp_own: int = 0,
     atp_employer: int = 0,
     pension_own: int = 0,
@@ -136,13 +138,20 @@ def estimate_salary_tax(
 ) -> SalaryTaxResult:
     """Estimate a single (unmarried) employee's Danish income tax for one year, with the full breakdown.
 
-    Use this instead of doing tax arithmetic yourself. All amounts are yearly DKK.
-    gross_salary includes bonus and RSU vests (taxed as salary). pension_own and
-    pension_employer are contributions to an employer-administered pension;
-    private_ratepension is what you pay into a ratepension yourself. other_deductions
-    covers other ligningsmæssige fradrag (befordring, union dues, ...).
-    Not covered: married couples, aktieindkomst, ejendomsværdiskat. The result lists
-    the source of every figure used; cite them with the income year. Not tax advice.
+    Use this instead of doing tax arithmetic yourself. All amounts are yearly DKK, not percent.
+    gross_salary: total salary INCLUDING the employee's own pension share and EXCLUDING the
+      employer's share; bonus and RSU vests count as salary. If the user gives pension as
+      percentages of salary, convert them to kroner first.
+    pension_own / pension_employer: contributions to an employer-administered pension.
+    private_ratepension: what the person pays into a ratepension themselves.
+    atp_full_time: use the statutory full-time ATP amounts; set False and pass atp_own /
+      atp_employer for part-time or other ATP.
+    other_deductions: other ligningsmæssige fradrag (befordring, union dues, ...).
+    The result includes til_udbetaling (take-home), effektiv_skatteprocent and marginalskat
+    (share of the next 1.000 kr. that goes to tax), and the source, verified date and status
+    of every figure used: cite them with the income year, and flag any figure that is not
+    'verified' (all_verified tells you at a glance). Not covered: married couples,
+    aktieindkomst, ejendomsværdiskat. Not tax advice.
     """
     kommune_result = _kommune(year, kommune)
     k = kommune_result.kommune
@@ -152,6 +161,7 @@ def estimate_salary_tax(
             gross_salary,
             kommuneskat=k.kommuneskat,
             kirkeskat=k.kirkeskat if folkekirke_member else 0,
+            atp_full_time=atp_full_time,
             atp_own=atp_own,
             atp_employer=atp_employer,
             pension_own=pension_own,

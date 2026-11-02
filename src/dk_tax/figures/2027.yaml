@@ -300,3 +300,23 @@ negativ_kapitalindkomst_kompensation_graense:
   verified: 2026-11-02
   status: verified
   note: PSL § 11, stk. 1. Not regulated.
+
+# --- ATP ----------------------------------------------------------------------
+
+atp_loenmodtager_maaned:
+  name: ATP-bidrag, lønmodtagers andel (månedslønnede, mindst 117 timer)
+  value: 99
+  unit: DKK
+  source: https://www.retsinformation.dk/eli/lta/2023/1621
+  verified: 2026-11-02
+  status: verified
+  note: Per month, full time. BEK nr 1621 af 12/12/2023 § 2, in force from 1 January 2024. No later regulation published as of 2026-11-02.
+
+atp_arbejdsgiver_maaned:
+  name: ATP-bidrag, arbejdsgivers andel (månedslønnede, mindst 117 timer)
+  value: 198
+  unit: DKK
+  source: https://www.retsinformation.dk/eli/lta/2023/1621
+  verified: 2026-11-02
+  status: verified
+  note: Per month, full time. BEK nr 1621 af 12/12/2023 § 2, in force from 1 January 2024. No later regulation published as of 2026-11-02.

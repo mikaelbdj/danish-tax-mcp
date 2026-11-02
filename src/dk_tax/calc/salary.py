@@ -25,15 +25,25 @@ Not covered: married couples (transfers between spouses), unused personfradrag
 carried to other taxes, aktieindkomst, ejendomsværdiskat, under-18 and senior rules.
 """
 
+from datetime import date
 from decimal import ROUND_HALF_UP, Decimal
 
 from pydantic import BaseModel
 
-from dk_tax.loader import Figure, load_year
+from dk_tax.loader import Figure, Status, load_year
 
 REFORM_YEAR = 2026  # first year with mellemskat/topskat/toptopskat
+MARGINAL_STEP = Decimal(1000)  # marginalskat: tax on the next 1.000 kr. of salary
 
 Amount = int | Decimal
+
+
+class FigureRef(BaseModel):
+    """The evidence for one figure used in a calculation."""
+
+    source: str
+    verified: date
+    status: Status
 
 
 class SalaryTax(BaseModel):
@@ -57,8 +67,16 @@ class SalaryTax(BaseModel):
     indkomstskat: Decimal
     skat_i_alt: Decimal
     """indkomstskat + AM-bidrag on the salary (AM-bidrag on pension is paid from the pension)."""
-    sources: dict[str, str]
-    """Figure key -> source URL for every figure the calculation used."""
+    til_udbetaling: Decimal
+    """Salary paid out: gross_salary - pension_own - atp_own - skat_i_alt."""
+    effektiv_skatteprocent: Decimal
+    """skat_i_alt as a percentage of gross_salary."""
+    marginalskat: Decimal | None = None
+    """Percentage of the next 1.000 kr. of gross salary that goes to skat_i_alt (pension unchanged)."""
+    all_verified: bool
+    """True if every figure used has status 'verified'."""
+    sources: dict[str, FigureRef]
+    """Figure key -> evidence for every figure the calculation used."""
 
 
 def _kr(x: Decimal) -> Decimal:
@@ -126,6 +144,7 @@ def estimate_salary_tax(
     *,
     kommuneskat: Amount,
     kirkeskat: Amount = 0,
+    atp_full_time: bool = False,
     atp_own: Amount = 0,
     atp_employer: Amount = 0,
     pension_own: Amount = 0,
@@ -138,12 +157,56 @@ def estimate_salary_tax(
 ) -> SalaryTax:
     """Estimate one year's income tax. Rates (kommuneskat, kirkeskat) in percent as printed.
 
+    All amounts are yearly kroner.
+    gross_salary: total salary including your own pension share (it is paid out of
+      your salary), excluding the employer's share. Bonus and RSU vests count as salary.
     pension_own/pension_employer: contributions to an employer-administered pension.
     private_ratepension: contributions you pay yourself (deducted in personlig indkomst).
+    atp_full_time: use the statutory full-time ATP amounts instead of atp_own/atp_employer.
     other_deductions: other ligningsmæssige fradrag (befordring, union dues, ...).
     """
+    args = dict(
+        kommuneskat=kommuneskat,
+        kirkeskat=kirkeskat,
+        atp_full_time=atp_full_time,
+        atp_own=atp_own,
+        atp_employer=atp_employer,
+        pension_own=pension_own,
+        pension_employer=pension_employer,
+        private_ratepension=private_ratepension,
+        other_personal_income=other_personal_income,
+        net_capital_income=net_capital_income,
+        other_deductions=other_deductions,
+        within_15_years_of_pension=within_15_years_of_pension,
+    )
+    result = _compute(year, gross_salary, **args)
+    next_step = _compute(year, Decimal(str(gross_salary)) + MARGINAL_STEP, **args)
+    marginal = (next_step.skat_i_alt - result.skat_i_alt) / MARGINAL_STEP * 100
+    return result.model_copy(update={"marginalskat": _ore(marginal)})
+
+
+def _compute(
+    year: int,
+    gross_salary: Amount,
+    *,
+    kommuneskat: Amount,
+    kirkeskat: Amount,
+    atp_full_time: bool,
+    atp_own: Amount,
+    atp_employer: Amount,
+    pension_own: Amount,
+    pension_employer: Amount,
+    private_ratepension: Amount,
+    other_personal_income: Amount,
+    net_capital_income: Amount,
+    other_deductions: Amount,
+    within_15_years_of_pension: bool,
+) -> SalaryTax:
     D = lambda x: Decimal(str(x))  # noqa: E731
     f = _Figures(year)
+    if atp_full_time:  # full-time monthly-paid employee, figures are per month
+        atp_own = f.value("atp_loenmodtager_maaned") * 12
+        atp_employer = f.value("atp_arbejdsgiver_maaned") * 12
     kommune, kirke = D(kommuneskat), D(kirkeskat)
     nki = D(net_capital_income)
     atp = D(atp_own) + D(atp_employer)
@@ -192,6 +255,8 @@ def estimate_salary_tax(
         toptopskat = _pos(personlig - f.value("toptopskat_graense")) * f.rate("toptopskat")
 
     indkomstskat = kommune_kirke - kompensation + bundskat + mellemskat + topskat + toptopskat
+    skat_i_alt = _ore(indkomstskat + am_bidrag)
+    gross = D(gross_salary)
     return SalaryTax(
         year=year,
         am_bidrag_grundlag=am_grundlag,
@@ -209,6 +274,11 @@ def estimate_salary_tax(
         topskat=_ore(topskat),
         toptopskat=_ore(toptopskat),
         indkomstskat=_ore(indkomstskat),
-        skat_i_alt=_ore(indkomstskat + am_bidrag),
-        sources={key: fig.source for key, fig in f.used.items()},
+        skat_i_alt=skat_i_alt,
+        til_udbetaling=_ore(gross - D(pension_own) - D(atp_own) - skat_i_alt),
+        effektiv_skatteprocent=_ore(skat_i_alt / gross * 100) if gross else Decimal(0),
+        all_verified=all(fig.status == "verified" for fig in f.used.values()),
+        sources={
+            key: FigureRef(source=fig.source, verified=fig.verified, status=fig.status) for key, fig in f.used.items()
+        },
     )

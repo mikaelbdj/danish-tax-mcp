@@ -94,3 +94,27 @@ def test_skatteloft_matches_svmn_table_for_every_kommune(year):
         base = r.personlig_indkomst - graense
         cut = rate - tax * 100 / base
         assert abs(cut - k.skatteloftsnedslag) < Decimal("0.001"), f"{year} {key}: {cut} != {k.skatteloftsnedslag}"
+
+
+def test_2026_take_home_and_marginal_rate():
+    """Same case as the hand calculation above.
+
+    til_udbetaling = 900.000 - 356.191,89                   = 543.808,11
+    effektiv       = 356.191,89 / 900.000                   = 39,58 %
+    marginalskat   = 8 (AM) + 92 % x (24,52 + 12,01 + 7,5 + 7,5) = 55,41 %
+                     (deductions are capped, so the next 1.000 kr. gets none)
+    """
+    r = estimate_salary_tax(2026, 900_000, kommuneskat=Decimal("24.52"))
+    assert r.til_udbetaling == Decimal("543808.11")
+    assert r.effektiv_skatteprocent == Decimal("39.58")
+    assert r.marginalskat == Decimal("55.41")
+    assert r.all_verified
+    assert r.sources["personfradrag"].status == "verified"
+
+
+def test_full_time_atp_2026():
+    """BEK nr 1621 af 12/12/2023 § 2: 99 + 198 kr. per month for 117+ hours."""
+    r = estimate_salary_tax(2026, 900_000, kommuneskat=Decimal("24.52"), atp_full_time=True)
+    assert r.am_bidrag_grundlag == 900_000 - 99 * 12  # own ATP is kept out of the AM-bidrag base
+    assert r.til_udbetaling == 900_000 - 99 * 12 - r.skat_i_alt
+    assert {"atp_loenmodtager_maaned", "atp_arbejdsgiver_maaned"} <= set(r.sources)

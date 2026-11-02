@@ -51,7 +51,9 @@ async def test_get_kommune_accepts_spellings(spelling):
 
 
 async def test_estimate_salary_tax_tool_matches_calculator():
-    result = await call("estimate_salary_tax", year=2026, gross_salary=900_000, kommune="Aarhus", folkekirke_member=False)
+    result = await call(
+        "estimate_salary_tax", year=2026, gross_salary=900_000, kommune="Aarhus", folkekirke_member=False, atp_full_time=False
+    )
     assert not result.is_error
     tax = result.structured_content["tax"]
     assert tax["indkomstskat"] == "284191.89"  # same as tests/test_salary.py hand calculation
@@ -60,8 +62,15 @@ async def test_estimate_salary_tax_tool_matches_calculator():
 
 
 async def test_estimate_salary_tax_church_member_pays_kirkeskat():
-    args = dict(year=2026, gross_salary=900_000, kommune="Aarhus")
+    args = dict(year=2026, gross_salary=900_000, kommune="Aarhus", atp_full_time=False)
     without = await call("estimate_salary_tax", folkekirke_member=False, **args)
     with_ = await call("estimate_salary_tax", folkekirke_member=True, **args)
     diff = Decimal(with_.structured_content["tax"]["indkomstskat"]) - Decimal(without.structured_content["tax"]["indkomstskat"])
     assert diff == Decimal("0.0074") * (761_600 - 54_100)  # 0,74 % kirkeskat on (skattepligtig - personfradrag)
+
+
+async def test_estimate_salary_tax_full_time_atp_by_default():
+    result = await call("estimate_salary_tax", year=2026, gross_salary=900_000, kommune="Aarhus", folkekirke_member=False)
+    tax = result.structured_content["tax"]
+    assert tax["am_bidrag_grundlag"] == str(900_000 - 99 * 12)  # own ATP is kept out of the AM-bidrag base
+    assert tax["sources"]["atp_loenmodtager_maaned"]["status"] == "verified"
