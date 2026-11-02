@@ -65,3 +65,11 @@ def test_aarhus_rates():
     for year in (2025, 2026, 2027):
         aarhus = load_kommuner(year).kommuner["aarhus"]
         assert (str(aarhus.kommuneskat), str(aarhus.kirkeskat)) == ("24.52", "0.74")
+
+
+def test_next_year_has_figures():
+    """Figures for year N are published in autumn of N-1. From November, require them,
+    so a stale package fails loudly instead of quietly answering with last year's rules."""
+    today = date.today()
+    if today.month >= 11:
+        assert today.year + 1 in YEARS, f"Add figures for {today.year + 1} (see CONTRIBUTING.md)"

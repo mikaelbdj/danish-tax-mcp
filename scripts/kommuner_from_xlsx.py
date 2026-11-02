@@ -3,7 +3,7 @@
 The files are linked from
 https://svmn.dk/tal-og-metode/satser/statistik-i-kommunerne/kommuneskatteprocenter-siden-1977
 
-Usage (from finance/tools/dk-tax):
+Usage (from the repository root):
     uv run python scripts/kommuner_from_xlsx.py 2026 https://svmn.dk/media/.../kommuneskattesatser_2026.xlsx
 """
 

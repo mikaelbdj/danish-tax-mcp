@@ -1,0 +1,35 @@
+# Contributing
+
+If you find a wrong figure or rule, please open an issue and include the official source
+(a URL, and the § or JV section if you have it).
+
+## Figures
+
+Use official sources only: skat.dk, info.skat.dk, svmn.dk and retsinformation.dk. A value
+from anywhere else gets `status: secondary` and a note saying where it came from.
+
+Write values the way the source prints them, so 12,01 % becomes `12.01`. Set `verified`
+to the day you compared the value with the source. If a value isn't final yet, for example
+because a bill hasn't passed, use `proposed` or `unverified` and add a note.
+`tests/test_data.py` checks these rules.
+
+## Adding a year
+
+Figures for a year are usually published the autumn before. From November,
+`test_next_year_has_figures` fails until the next year is added.
+
+1. Copy the latest file in `src/dk_tax/figures/` and rename it to the new year.
+2. Update the values from svmn.dk's "Satser og beløbsgrænser i lovgivningen" (the pages for
+   personskatteloven, ligningsloven, pensionsbeskatningsloven, aktiesparekontoloven,
+   arbejdsmarkedsbidragsloven and pensionsafkastbeskatningsloven).
+3. If brackets were added or removed, update `calc/salary.py` and `calc/payslip.py` and
+   branch on the year, as `REFORM_YEAR` does for 2026.
+4. Generate the kommune table from Skatteministeriet's Excel file (linked from
+   "Kommuneskatteprocenter siden 1977" on svmn.dk):
+
+   ```sh
+   uv run python scripts/kommuner_from_xlsx.py <year> <xlsx URL>
+   ```
+
+5. Add a few of the new values to `test_pinned_values` in `tests/test_data.py` and run
+   `uv run pytest`.

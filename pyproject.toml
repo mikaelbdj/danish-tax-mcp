@@ -1,20 +1,32 @@
 [project]
-name = "dk-tax"
+name = "danish-tax-mcp"
 version = "0.1.0"
 description = "Danish personal tax figures and calculators, exposed as an MCP server"
 readme = "README.md"
 authors = [
-    { name = "Mikael Bisgaard Dahlsen-Jensen", email = "mikaelbdj@gmail.com" }
+    { name = "Mikael Bisgaard Dahlsen-Jensen", email = "47351659+mikaelbdj@users.noreply.github.com" }
 ]
 requires-python = ">=3.12"
+license = "MIT"
+license-files = ["LICENSE"]
+keywords = ["mcp", "denmark", "tax", "skat", "forskudsopgørelse", "trækprocent"]
+classifiers = [
+    "Natural Language :: Danish",
+    "Natural Language :: English",
+    "Programming Language :: Python :: 3",
+    "Topic :: Office/Business :: Financial :: Accounting",
+]
 dependencies = [
-    "mcp>=2.3",
+    "mcp>=2.3,<3",
     "pydantic>=2.14.2",
     "pyyaml>=6.0.3",
 ]
 
 [project.scripts]
 dk-tax = "dk_tax:main"
+
+[project.urls]
+Repository = "https://github.com/mikaelbdj/danish-tax-mcp"
 
 [build-system]
 requires = ["uv_build>=0.12.21,<0.13.0"]
@@ -25,3 +37,6 @@ dev = [
     "openpyxl>=3.1.5",
     "pytest>=9.2.0",
 ]
+
+[tool.uv.build-backend]
+module-name = "dk_tax"
