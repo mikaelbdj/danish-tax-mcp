@@ -19,7 +19,9 @@ async def test_tool_surface():
     # Renaming or removing a tool breaks permission rules and Claude's habits: make it a conscious change.
     async with Client(server) as client:
         tools = {t.name: t for t in (await client.list_tools()).tools}
-    assert set(tools) == {"list_figures", "get_figures", "get_kommune", "estimate_salary_tax", "estimate_payslip"}
+    assert set(tools) == {
+        "list_figures", "get_figures", "get_kommune", "estimate_salary_tax", "estimate_payslip", "estimate_property_tax"
+    }
     assert set(tools["get_figures"].input_schema["properties"]) == {"year", "keys"}
 
 
@@ -100,3 +102,23 @@ async def test_estimate_payslip_withhold_to_cover():
     )
     assert not result.is_error
     assert Decimal(result.structured_content["payslip"]["share_vest"]["per_vest"]) == 50_000
+
+
+async def test_estimate_property_tax_tool():
+    """Same case as tests/test_property.py: Aarhus 6 promille, 4.000.000 / 1.000.000, capped grundskyld."""
+    result = await call(
+        "estimate_property_tax", year=2026, kommune="Aarhus", ejendomsvaerdi=4_000_000, grundvaerdi=1_000_000,
+        grundskyld_forrige_aar=4_000,
+    )
+    assert not result.is_error
+    tax = result.structured_content["tax"]
+    assert tax["ejendomsvaerdiskat"] == "16320.00"
+    assert tax["grundskyld"] == "4228.00"
+    assert result.structured_content["kommune"]["kommune"]["grundskyldspromille"] == "6"
+    assert tax["sources"]["ejendomsvaerdiskat_sats"]["status"] == "verified"
+
+
+async def test_estimate_property_tax_rejects_2025():
+    result = await call("estimate_property_tax", year=2025, kommune="Aarhus", ejendomsvaerdi=4_000_000, grundvaerdi=1_000_000)
+    assert result.is_error
+    assert "2026" in result.content[0].text

@@ -25,18 +25,20 @@ Other MCP clients can run the same command over stdio.
 | `get_kommune(year, kommune)` | Kommuneskat, kirkeskat, skatteloftsnedslag and grundskyld |
 | `estimate_salary_tax(...)` | Income tax for an unmarried employee, with take-home pay and marginal rate |
 | `estimate_payslip(...)` | Trækprocent and månedsfradrag from a forskudsopgørelse, monthly payout, share vests and expected restskat (2026 onwards) |
+| `estimate_property_tax(...)` | Ejendomsværdiskat and grundskyld for a home owned the whole year, with the cap on grundskyld increases (2026 onwards) |
 
 Example questions:
 
 - Hvad er topskattegrænsen i 2027?
 - How much tax do I pay on 900.000 kr. in Aarhus?
 - What happens to my trækprocent if I put my bonus and RSUs in the forskudsopgørelse?
+- Hvad bliver ejendomsværdiskatten på en lejlighed vurderet til 4 mio. kr. i Aarhus?
 
 ## Coverage
 
 Income years 2025 to 2027, and all 98 kommuner. 2023 is included only because the
-official worked example is from that year. Married couples, aktieindkomst,
-ejendomsværdiskat and the positivliste are not covered yet.
+official worked example is from that year. Married couples, aktieindkomst, the
+positivliste, and buying or selling a home during the year are not covered yet.
 
 ## Testing
 

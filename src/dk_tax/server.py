@@ -10,6 +10,8 @@ from pydantic import BaseModel
 
 from dk_tax.calc.payslip import Payslip
 from dk_tax.calc.payslip import estimate_payslip as _payslip
+from dk_tax.calc.property import PropertyTax
+from dk_tax.calc.property import estimate_property_tax as _property
 from dk_tax.calc.salary import SalaryTax
 from dk_tax.calc.salary import estimate_salary_tax as _estimate
 from dk_tax.loader import Figure, Kommune, Status, load_kommuner, load_year, slug
@@ -253,3 +255,51 @@ def estimate_payslip(
     except (LookupError, ValueError) as e:
         raise ToolError(str(e)) from e
     return PayslipResult(payslip=payslip, kommune=kommune_result)
+
+
+class PropertyTaxResult(BaseModel):
+    tax: PropertyTax
+    kommune: KommuneResult
+
+
+@server.tool()
+def estimate_property_tax(
+    year: int,
+    kommune: str,
+    ejendomsvaerdi: int,
+    grundvaerdi: int,
+    ejerandel_pct: float = 100,
+    grundskyld_forrige_aar: int | None = None,
+) -> PropertyTaxResult:
+    """Estimate ejendomsværdiskat and grundskyld for an owner-occupied home (house or
+    ejerlejlighed) for one full year, from income year 2026.
+
+    ejendomsvaerdi, grundvaerdi: DKK as assessed in the official property valuation for the
+      PREVIOUS year (the 2026 tax uses the 2025 values). For an ejerlejlighed, the flat's own
+      values. 80 % of each is taxed.
+    ejerandel_pct: the user's ownership share; ejendomsværdiskat is computed for the whole
+      property and then split. Grundskyld is reported for the whole property.
+    grundskyld_forrige_aar: the property's grundskyld last year (e.g. from the previous owner's
+      or last year's property tax bill). Grundskyld can rise at most 4,75 % of the full amount
+      a year, also after a sale; without this input grundskyld is the uncapped upper bound
+      (grundskyld_oevre_graense is true): say so.
+    Assumes the home is owned and lived in the whole year; buying or selling during the year
+    is not handled yet. Buyers get no transitional rabat (it lapses on a change of owner).
+    Mortgage interest (rentefradrag) is not a property tax: pass it as negative
+    net_capital_income to estimate_salary_tax.
+    Cite the sources with the income year and flag any figure that is not 'verified'.
+    Not tax advice.
+    """
+    kommune_result = _kommune(year, kommune)
+    try:
+        tax = _property(
+            year,
+            ejendomsvaerdi,
+            grundvaerdi,
+            grundskyldspromille=kommune_result.kommune.grundskyldspromille,
+            ejerandel_pct=str(ejerandel_pct),
+            grundskyld_forrige_aar=grundskyld_forrige_aar,
+        )
+    except (LookupError, ValueError) as e:
+        raise ToolError(str(e)) from e
+    return PropertyTaxResult(tax=tax, kommune=kommune_result)

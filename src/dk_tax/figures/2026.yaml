@@ -316,3 +316,50 @@ atp_arbejdsgiver_maaned:
   verified: 2026-11-02
   status: verified
   note: Per month, full time. BEK nr 1621 af 12/12/2023 § 2, in force from 1 January 2024.
+
+# --- Property tax (ejendomsskatteloven) ----------------------------------------
+
+beskatningsgrundlag_ejendom_andel:
+  name: Beskatningsgrundlag som andel af ejendomsværdien eller grundværdien
+  value: 80
+  unit: percent
+  source: https://svmn.dk/tal-og-metode/satser/satser-og-beloebsgraenser-i-lovgivningen/ejendomsskatteloven
+  verified: 2026-11-03
+  status: verified
+  note: ESL § 13, stk. 2 (ejendomsværdiskat) and § 17, stk. 2 (grundskyld), lov nr. 678 af 3/6/2023. Applied to the values assessed for the previous year.
+
+ejendomsvaerdiskat_sats:
+  name: Alm. ejendomsværdiskattesats
+  value: 5.1
+  unit: permille
+  source: https://svmn.dk/tal-og-metode/satser/satser-og-beloebsgraenser-i-lovgivningen/ejendomsskatteloven
+  verified: 2026-11-03
+  status: verified
+  note: ESL § 22, stk. 1 (stk. 2 before lov nr. 562 af 27/5/2025, which svmn.dk still cites). On the beskatningsgrundlag up to ejendomsvaerdiskat_progressionsgraense.
+
+ejendomsvaerdiskat_progressiv_sats:
+  name: Progressiv ejendomsværdiskattesats
+  value: 14
+  unit: permille
+  source: https://svmn.dk/tal-og-metode/satser/satser-og-beloebsgraenser-i-lovgivningen/ejendomsskatteloven
+  verified: 2026-11-03
+  status: verified
+  note: ESL § 22, stk. 1. On the part of the beskatningsgrundlag above ejendomsvaerdiskat_progressionsgraense.
+
+ejendomsvaerdiskat_progressionsgraense:
+  name: Progressionsgrænse (ejendomsværdiskat)
+  value: 9007000
+  unit: DKK
+  source: https://svmn.dk/tal-og-metode/satser/satser-og-beloebsgraenser-i-lovgivningen/ejendomsskatteloven
+  verified: 2026-11-03
+  status: verified
+  note: ESL § 22, stk. 1-3. Grundbeløb 9.200.000 kr. (2024-niveau), regulated every second year by an ejerboligværdiindeks and rounded up to 1.000 kr., first for 2026; so 2026 and 2027 share the value.
+
+grundskyld_stigningsprocent:
+  name: Stigningsprocent ved stigningsbegrænsning for grundskyld (andre end almene boliger)
+  value: 4.75
+  unit: percent
+  source: https://svmn.dk/tal-og-metode/satser/satser-og-beloebsgraenser-i-lovgivningen/ejendomsskatteloven
+  verified: 2026-11-03
+  status: verified
+  note: ESL § 45, stk. 2, nr. 2, from 2025. Grundskyld is the lower of the full grundskyld and last year's grundskyld plus this percentage of the full grundskyld. Follows the property, also after a change of owner (not in § 45, stk. 3).
