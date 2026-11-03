@@ -271,9 +271,11 @@ def estimate_property_tax(
     grundvaerdi: int,
     ejerandel_pct: float = 100,
     grundskyld_forrige_aar: int | None = None,
+    overtagelsesdag: date | None = None,
+    indflytningsdag: date | None = None,
 ) -> PropertyTaxResult:
     """Estimate ejendomsværdiskat and grundskyld for an owner-occupied home (house or
-    ejerlejlighed) for one full year, from income year 2026.
+    ejerlejlighed) for one income year, from 2026, including the year it is bought.
 
     ejendomsvaerdi, grundvaerdi: DKK as assessed in the official property valuation for the
       PREVIOUS year (the 2026 tax uses the 2025 values). For an ejerlejlighed, the flat's own
@@ -284,8 +286,13 @@ def estimate_property_tax(
       or last year's property tax bill). Grundskyld can rise at most 4,75 % of the full amount
       a year, also after a sale; without this input grundskyld is the uncapped upper bound
       (grundskyld_oevre_graense is true): say so.
-    Assumes the home is owned and lived in the whole year; buying or selling during the year
-    is not handled yet. Buyers get no transitional rabat (it lapses on a change of owner).
+    overtagelsesdag: the takeover date if the home is bought during the year. Both taxes are
+      then reduced to the days from that date, counting the year as 360 days (30 per month).
+    indflytningsdag: only if the user moves in later than the overtagelsesdag AND is moving
+      from another home they own and are selling; it then replaces the overtagelsesdag for
+      ejendomsværdiskat only. Moving from a rental: leave it out.
+    Selling during the year is not handled. Buyers get no transitional rabat (it lapses on a
+    change of owner).
     Mortgage interest (rentefradrag) is not a property tax: pass it as negative
     net_capital_income to estimate_salary_tax.
     Cite the sources with the income year and flag any figure that is not 'verified'.
@@ -300,6 +307,8 @@ def estimate_property_tax(
             grundskyldspromille=kommune_result.kommune.grundskyldspromille,
             ejerandel_pct=str(ejerandel_pct),
             grundskyld_forrige_aar=grundskyld_forrige_aar,
+            overtagelsesdag=overtagelsesdag,
+            indflytningsdag=indflytningsdag,
         )
     except (LookupError, ValueError) as e:
         raise ToolError(str(e)) from e

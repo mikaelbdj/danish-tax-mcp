@@ -25,7 +25,7 @@ Other MCP clients can run the same command over stdio.
 | `get_kommune(year, kommune)` | Kommuneskat, kirkeskat, skatteloftsnedslag and grundskyld |
 | `estimate_salary_tax(...)` | Income tax for an unmarried employee, with take-home pay and marginal rate |
 | `estimate_payslip(...)` | Trækprocent and månedsfradrag from a forskudsopgørelse, monthly payout, share vests and expected restskat (2026 onwards) |
-| `estimate_property_tax(...)` | Ejendomsværdiskat and grundskyld for a home owned the whole year, with the cap on grundskyld increases (2026 onwards) |
+| `estimate_property_tax(...)` | Ejendomsværdiskat and grundskyld for an owner-occupied home, including the year it is bought, with the cap on grundskyld increases (2026 onwards) |
 
 Example questions:
 
@@ -38,7 +38,7 @@ Example questions:
 
 Income years 2025 to 2027, and all 98 kommuner. 2023 is included only because the
 official worked example is from that year. Married couples, aktieindkomst, the
-positivliste, and buying or selling a home during the year are not covered yet.
+positivliste, and selling a home during the year are not covered yet.
 
 ## Testing
 

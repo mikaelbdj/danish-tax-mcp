@@ -122,3 +122,15 @@ async def test_estimate_property_tax_rejects_2025():
     result = await call("estimate_property_tax", year=2025, kommune="Aarhus", ejendomsvaerdi=4_000_000, grundvaerdi=1_000_000)
     assert result.is_error
     assert "2026" in result.content[0].text
+
+
+async def test_estimate_property_tax_purchase_year():
+    """Dates arrive as ISO strings over JSON. Bought 1 April: 270/360 of 16.320 and 4.800."""
+    result = await call(
+        "estimate_property_tax", year=2026, kommune="Aarhus", ejendomsvaerdi=4_000_000, grundvaerdi=1_000_000,
+        overtagelsesdag="2026-04-01",
+    )
+    assert not result.is_error
+    tax = result.structured_content["tax"]
+    assert (tax["ejendomsvaerdiskat"], tax["grundskyld"]) == ("12240.00", "3600.00")
+    assert tax["ejendomsvaerdiskat_dage"] == 270
