@@ -1,6 +1,6 @@
 [project]
 name = "danish-tax-mcp"
-version = "0.2.0"
+version = "0.3.0"
 description = "Danish personal tax figures and calculators, exposed as an MCP server"
 readme = "README.md"
 authors = [
