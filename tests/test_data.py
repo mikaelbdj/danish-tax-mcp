@@ -2,10 +2,11 @@
 
 import re
 from datetime import date
+from decimal import Decimal
 
 import pytest
 
-from dk_tax.loader import available_years, load_kommuner, load_year, slug
+from dk_tax.loader import Figure, available_years, load_kommuner, load_year, slug
 
 YEARS = available_years()
 OFFICIAL = re.compile(r"^https://(www\.)?(skat\.dk|info\.skat\.dk|svmn\.dk|retsinformation\.dk)/")
@@ -27,6 +28,14 @@ def test_every_figure_is_well_formed(year):
             assert f.note, f"{year}/{key}: status '{f.status}' needs a note explaining why"
         if f.unit == "percent":
             assert 0 <= f.value <= 100, f"{year}/{key}: percentage out of range"
+        if f.unit == "permille":
+            assert 0 <= f.value <= 1000, f"{year}/{key}: per mille out of range"
+
+
+def test_permille_rate_is_a_fraction():
+    # Property tax rates are printed in promille (5,1 promille); stored as printed.
+    f = Figure(name="x", value=Decimal("5.1"), unit="permille", source="s", verified=date(2026, 1, 1), status="verified")
+    assert f.rate() == Decimal("0.0051")
 
 
 # 2023 exists only for the official worked example and has no municipal table.

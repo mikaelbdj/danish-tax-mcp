@@ -25,17 +25,19 @@ class Figure(BaseModel):
 
     name: str
     value: Decimal
-    unit: Literal["percent", "DKK"]
+    unit: Literal["percent", "permille", "DKK"]
     source: str
     verified: date
     status: Status
     note: str | None = None
 
     def rate(self) -> Decimal:
-        """The value as a fraction for calculations: 12.01 percent -> 0.1201."""
-        if self.unit != "percent":
-            raise ValueError(f"{self.name} is in {self.unit}, not a percentage")
-        return self.value / 100
+        """The value as a fraction for calculations: 12.01 percent -> 0.1201, 5.1 permille -> 0.0051."""
+        if self.unit == "percent":
+            return self.value / 100
+        if self.unit == "permille":
+            return self.value / 1000
+        raise ValueError(f"{self.name} is in {self.unit}, not a rate")
 
 
 class Kommune(BaseModel):
