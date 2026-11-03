@@ -118,3 +118,17 @@ def test_full_time_atp_2026():
     assert r.am_bidrag_grundlag == 900_000 - 99 * 12  # own ATP is kept out of the AM-bidrag base
     assert r.til_udbetaling == 900_000 - 99 * 12 - r.skat_i_alt
     assert {"atp_loenmodtager_maaned", "atp_arbejdsgiver_maaned"} <= set(r.sources)
+
+
+def test_2026_capital_income_counts_in_mellemskat_only():
+    """Lov nr. 482 af 22/05/2024 § 1, nr. 2, 5 and 6 (from income year 2026):
+    mellemskat (PSL § 7, stk. 1) is on personlig indkomst plus positive nettokapitalindkomst
+    above its grundbeløb; topskat (§ 7 a) and toptopskat (§ 8) are on personlig indkomst only.
+    Salary high enough for all three brackets."""
+    args = dict(kommuneskat=Decimal("24.52"))
+    without = estimate_salary_tax(2026, 3_000_000, **args)
+    with_capital = estimate_salary_tax(2026, 3_000_000, net_capital_income=200_000, **args)
+    assert without.toptopskat > 0
+    assert with_capital.topskat == without.topskat
+    assert with_capital.toptopskat == without.toptopskat
+    assert with_capital.mellemskat > without.mellemskat
