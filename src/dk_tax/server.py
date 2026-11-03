@@ -1,5 +1,6 @@
 """MCP layer: thin tool wrappers over the dk_tax logic."""
 
+from collections.abc import Mapping
 from datetime import date
 from difflib import get_close_matches
 from typing import Literal
@@ -49,7 +50,7 @@ class KommuneResult(BaseModel):
     status: Status
 
 
-def _load(year: int) -> dict[str, Figure]:
+def _load(year: int) -> Mapping[str, Figure]:
     try:
         return load_year(year)
     except LookupError as e:

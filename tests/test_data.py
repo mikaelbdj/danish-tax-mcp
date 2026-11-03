@@ -82,3 +82,17 @@ def test_next_year_has_figures():
     today = date.today()
     if today.month >= 11:
         assert today.year + 1 in YEARS, f"Add figures for {today.year + 1} (see CONTRIBUTING.md)"
+
+
+def test_unknown_kommune_year_lists_only_years_with_a_kommune_table():
+    # 2023 has figures (for the svmn.dk example) but no kommune table.
+    with pytest.raises(LookupError) as e:
+        load_kommuner(2023)
+    assert "2023" not in str(e.value).split("Available years:")[1]
+    assert "2026" in str(e.value)
+
+
+def test_loaded_figures_are_read_only():
+    # load_year is cached and shared by every caller; a change would leak into later calls.
+    with pytest.raises(TypeError):
+        load_year(2026)["bundskat"] = None

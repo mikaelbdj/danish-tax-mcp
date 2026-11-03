@@ -3,10 +3,12 @@
 Plain Python, no MCP: importable from calculators, tests and notebooks.
 """
 
+from collections.abc import Mapping
 from datetime import date
 from decimal import Decimal
 from functools import cache
 from importlib.resources import files
+from types import MappingProxyType
 from typing import Literal
 
 import yaml
@@ -70,18 +72,29 @@ def slug(name: str) -> str:
     return s
 
 
+def _years_in(directory) -> list[int]:
+    return sorted(int(f.name.removesuffix(".yaml")) for f in directory.iterdir() if f.name.endswith(".yaml"))
+
+
 def available_years() -> list[int]:
-    return sorted(int(f.name.removesuffix(".yaml")) for f in FIGURES_DIR.iterdir() if f.name.endswith(".yaml"))
+    """Income years with a figures file."""
+    return _years_in(FIGURES_DIR)
+
+
+def available_kommune_years() -> list[int]:
+    """Income years with a kommune table (2023 has figures only)."""
+    return _years_in(FIGURES_DIR / "kommuner")
 
 
 @cache
-def load_year(year: int) -> dict[str, Figure]:
-    """All figures for an income year, validated. Raises LookupError for unknown years."""
+def load_year(year: int) -> Mapping[str, Figure]:
+    """All figures for an income year, validated and read-only (the result is cached and
+    shared). Raises LookupError for unknown years."""
     path = FIGURES_DIR / f"{year}.yaml"
     if not path.is_file():
         raise LookupError(f"No figures for {year}. Available years: {available_years()}")
     raw = yaml.safe_load(path.read_text(encoding="utf-8"))
-    return {key: Figure(**record) for key, record in raw.items()}
+    return MappingProxyType({key: Figure(**record) for key, record in raw.items()})
 
 
 @cache
@@ -89,5 +102,5 @@ def load_kommuner(year: int) -> KommuneTable:
     """The municipal rate table for an income year. Raises LookupError for unknown years."""
     path = FIGURES_DIR / "kommuner" / f"{year}.yaml"
     if not path.is_file():
-        raise LookupError(f"No municipal rates for {year}. Available years: {available_years()}")
+        raise LookupError(f"No municipal rates for {year}. Available years: {available_kommune_years()}")
     return KommuneTable(**yaml.safe_load(path.read_text(encoding="utf-8")))
