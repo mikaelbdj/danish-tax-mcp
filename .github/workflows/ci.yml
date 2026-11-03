@@ -15,5 +15,15 @@ jobs:
         with:
           python-version: "3.12"
       - run: pip install uv
-      - run: uv run pytest
+      # --locked: fail if uv.lock is out of date with pyproject.toml instead of re-locking.
+      - run: uv run --locked pytest
       - run: uv build
+      # Tests run against src/; this checks the wheel users install (package data included).
+      - name: Smoke-test the built wheel
+        run: |
+          uv run --isolated --no-project --with dist/*.whl python -I -c "
+          import dk_tax, dk_tax.server
+          from dk_tax.loader import load_year, load_kommuner
+          assert 'site-packages' in dk_tax.__file__, dk_tax.__file__
+          load_year(2026); load_kommuner(2026)
+          print('wheel OK:', dk_tax.__file__)"
