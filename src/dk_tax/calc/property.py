@@ -27,7 +27,7 @@ from decimal import ROUND_HALF_UP, Decimal
 
 from pydantic import BaseModel
 
-from dk_tax.calc.salary import FigureRef, _Figures
+from dk_tax.calc.figures import FigureRef, Figures
 
 FIRST_YEAR = 2026  # first year with figures for this calculator
 
@@ -82,7 +82,7 @@ def estimate_property_tax(
     if year < FIRST_YEAR:
         raise ValueError(f"Property tax rules are implemented from income year {FIRST_YEAR}")
     D = lambda x: Decimal(str(x))  # noqa: E731
-    f = _Figures(year)
+    f = Figures(year)
     andel = f.rate("beskatningsgrundlag_ejendom_andel")
 
     # Ejendomsværdiskat, for the whole property, then the owner's share
@@ -111,6 +111,6 @@ def estimate_property_tax(
         grundskyld=_ore(gs),
         stigningsbegraensning_anvendt=gs < gs_fuld,
         grundskyld_oevre_graense=grundskyld_forrige_aar is None,
-        all_verified=all(fig.status == "verified" for fig in f.used.values()),
-        sources={k: FigureRef(source=v.source, verified=v.verified, status=v.status) for k, v in f.used.items()},
+        all_verified=f.all_verified(),
+        sources=f.sources(),
     )

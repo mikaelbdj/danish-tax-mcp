@@ -34,8 +34,8 @@ from typing import Literal
 
 from pydantic import BaseModel
 
-from dk_tax.calc.salary import REFORM_YEAR, FigureRef, estimate_salary_tax
-from dk_tax.loader import load_year
+from dk_tax.calc.figures import FigureRef, Figures
+from dk_tax.calc.salary import REFORM_YEAR, estimate_salary_tax
 
 Amount = int | Decimal
 
@@ -146,7 +146,7 @@ def estimate_payslip(
     if share_withholding == "fixed" and share_withholding_rate is None:
         raise ValueError('share_withholding="fixed" needs share_withholding_rate (percent)')
     D = lambda x: Decimal(str(x))  # noqa: E731
-    figures = load_year(year)
+    figures = Figures(year)
     salary, bonus_ = D(monthly_salary), D(bonus)
     own_pct, emp_pct = D(pension_own_pct) / 100, D(pension_employer_pct) / 100
     pensionable_bonus = bonus_ if bonus_has_pension else Decimal(0)
@@ -172,7 +172,6 @@ def estimate_payslip(
     actual = year_tax(True, True)
 
     # Trækprocent (BEK 1094/2025 § 6)
-    used = ["bundskat", "mellemskat_kapitalindkomst_bundfradrag", "skatteloft", "topskat"]
     pi = forskud.personlig_indkomst
     kapital_over = max(Decimal(0), D(net_capital_income) - figures["mellemskat_kapitalindkomst_bundfradrag"].value)
     components = [
@@ -203,8 +202,6 @@ def estimate_payslip(
     # Payslips
     am_rate = figures["am_bidrag"].rate()
     atp = figures["atp_loenmodtager_maaned"].value if atp_full_time else Decimal(0)
-    if atp_full_time:
-        used.append("atp_loenmodtager_maaned")
 
     def month(gross: Decimal, pensionable: Decimal) -> MonthPayslip:
         pension = own_pct * pensionable
@@ -235,10 +232,7 @@ def estimate_payslip(
         share_vest = ShareVest(per_vest=per_vest, am_bidrag=vest_am, a_skat=vest_skat, net_value=per_vest - vest_am - vest_skat)
         withheld += vests_per_year * (vest_am + vest_skat)
 
-    sources = {**forskud.sources, **actual.sources}
-    for key in used:
-        f = figures[key]
-        sources[key] = FigureRef(source=f.source, verified=f.verified, status=f.status)
+    sources = {**forskud.sources, **actual.sources, **figures.sources()}
     return Payslip(
         year=year,
         traekprocent=traek,

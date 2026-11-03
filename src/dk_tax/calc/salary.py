@@ -25,25 +25,16 @@ Not covered: married couples (transfers between spouses), unused personfradrag
 carried to other taxes, aktieindkomst, ejendomsværdiskat, under-18 and senior rules.
 """
 
-from datetime import date
 from decimal import ROUND_HALF_UP, Decimal
 
 from pydantic import BaseModel
 
-from dk_tax.loader import Figure, Status, load_year
+from dk_tax.calc.figures import FigureRef, Figures
 
 REFORM_YEAR = 2026  # first year with mellemskat/topskat/toptopskat
 MARGINAL_STEP = Decimal(1000)  # marginalskat: tax on the next 1.000 kr. of salary
 
 Amount = int | Decimal
-
-
-class FigureRef(BaseModel):
-    """The evidence for one figure used in a calculation."""
-
-    source: str
-    verified: date
-    status: Status
 
 
 class SalaryTax(BaseModel):
@@ -93,26 +84,8 @@ def _pos(x: Decimal) -> Decimal:
     return max(Decimal(0), x)
 
 
-class _Figures:
-    """Access to one year's figures that records which ones were used."""
-
-    def __init__(self, year: int):
-        self._all = load_year(year)
-        self.used: dict[str, Figure] = {}
-
-    def __getitem__(self, key: str) -> Figure:
-        self.used[key] = self._all[key]
-        return self._all[key]
-
-    def value(self, key: str) -> Decimal:
-        return self[key].value
-
-    def rate(self, key: str) -> Decimal:
-        return self[key].rate()
-
-
 def _capped_bracket(
-    f: _Figures,
+    f: Figures,
     rate_key: str,
     graense_key: str,
     kapital_bundfradrag_key: str,
@@ -211,7 +184,7 @@ def _compute(
     within_15_years_of_pension: bool,
 ) -> SalaryTax:
     D = lambda x: Decimal(str(x))  # noqa: E731
-    f = _Figures(year)
+    f = Figures(year)
     if atp_full_time:  # full-time monthly-paid employee, figures are per month
         atp_own = f.value("atp_loenmodtager_maaned") * 12
         atp_employer = f.value("atp_arbejdsgiver_maaned") * 12
@@ -290,8 +263,6 @@ def _compute(
         skat_i_alt=skat_i_alt,
         til_udbetaling=_ore(gross - D(pension_own) - D(atp_own) - skat_i_alt),
         effektiv_skatteprocent=_ore(skat_i_alt / (gross + D(share_compensation)) * 100) if gross else Decimal(0),
-        all_verified=all(fig.status == "verified" for fig in f.used.values()),
-        sources={
-            key: FigureRef(source=fig.source, verified=fig.verified, status=fig.status) for key, fig in f.used.items()
-        },
+        all_verified=f.all_verified(),
+        sources=f.sources(),
     )
