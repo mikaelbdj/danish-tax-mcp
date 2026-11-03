@@ -32,7 +32,7 @@ Payslip amounts are exact (no payroll rounding to 10 kr. as in JV A.B.4.1.1.2.6)
 from decimal import ROUND_CEILING, ROUND_DOWN, ROUND_FLOOR, Decimal
 from typing import Literal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from dk_tax.calc.figures import FigureRef, Figures
 from dk_tax.calc.salary import REFORM_YEAR, estimate_salary_tax
@@ -41,6 +41,7 @@ Amount = int | Decimal
 
 
 class MonthPayslip(BaseModel):
+    model_config = ConfigDict(use_attribute_docstrings=True)  # field docstrings -> outputSchema
     gross: Decimal
     pension_own: Decimal
     atp_own: Decimal
@@ -51,6 +52,7 @@ class MonthPayslip(BaseModel):
 
 class ShareVest(BaseModel):
     """One vest under withhold-to-cover: tax paid by keeping back shares, not from cash."""
+    model_config = ConfigDict(use_attribute_docstrings=True)  # field docstrings -> outputSchema
 
     per_vest: Decimal
     am_bidrag: Decimal
@@ -60,6 +62,7 @@ class ShareVest(BaseModel):
 
 
 class YearEnd(BaseModel):
+    model_config = ConfigDict(use_attribute_docstrings=True)  # field docstrings -> outputSchema
     withheld: Decimal
     """AM-bidrag and A-skat withheld during the year, plus any B-skat on the forskudsopgørelse."""
     actual_tax: Decimal
@@ -69,6 +72,7 @@ class YearEnd(BaseModel):
 
 
 class Payslip(BaseModel):
+    model_config = ConfigDict(use_attribute_docstrings=True)  # field docstrings -> outputSchema
     year: int
     traekprocent: int
     traekprocent_uafrundet: Decimal

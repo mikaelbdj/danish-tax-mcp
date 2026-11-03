@@ -32,7 +32,7 @@ these taxes is not confirmed. Day 31 of a month counts as day 30 (§ 72 has 30-d
 from datetime import date
 from decimal import ROUND_HALF_UP, Decimal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from dk_tax.calc.figures import FigureRef, Figures
 
@@ -44,6 +44,7 @@ Amount = int | Decimal
 
 class PropertyTax(BaseModel):
     """Ejendomsværdiskat and grundskyld for one year. Kroner, rounded to øre."""
+    model_config = ConfigDict(use_attribute_docstrings=True)  # field docstrings -> outputSchema
 
     year: int
     vurderingsaar: int

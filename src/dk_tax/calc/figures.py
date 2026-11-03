@@ -3,13 +3,14 @@
 from datetime import date
 from decimal import Decimal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from dk_tax.loader import Figure, Status, load_year
 
 
 class FigureRef(BaseModel):
     """The evidence for one figure used in a calculation."""
+    model_config = ConfigDict(use_attribute_docstrings=True)  # field docstrings -> outputSchema
 
     source: str
     verified: date

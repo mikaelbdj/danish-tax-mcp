@@ -27,7 +27,7 @@ carried to other taxes, aktieindkomst, ejendomsværdiskat, under-18 and senior r
 
 from decimal import ROUND_HALF_UP, Decimal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from dk_tax.calc.figures import FigureRef, Figures
 
@@ -39,6 +39,7 @@ Amount = int | Decimal
 
 class SalaryTax(BaseModel):
     """Breakdown of the calculation. Kroner; taxes rounded to øre for display."""
+    model_config = ConfigDict(use_attribute_docstrings=True)  # field docstrings -> outputSchema
 
     year: int
     am_bidrag_grundlag: Decimal

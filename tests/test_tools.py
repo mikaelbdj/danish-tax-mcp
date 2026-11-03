@@ -25,6 +25,20 @@ async def test_tool_surface():
     assert set(tools["get_figures"].input_schema["properties"]) == {"year", "keys"}
 
 
+async def test_result_field_docstrings_reach_the_output_schema():
+    # Claude reads field meanings from the outputSchema; pydantic drops attribute docstrings
+    # unless use_attribute_docstrings is set.
+    async with Client(server) as client:
+        tools = {t.name: t for t in (await client.list_tools()).tools}
+    for tool, model, field, word in [
+        ("estimate_property_tax", "PropertyTax", "vurderingsaar", "before the income year"),
+        ("estimate_salary_tax", "SalaryTax", "marginalskat", ""),
+        ("estimate_payslip", "YearEnd", "restskat", ""),
+    ]:
+        description = tools[tool].output_schema["$defs"][model]["properties"][field].get("description", "")
+        assert description and word in description, (tool, field)
+
+
 async def test_get_figures_returns_value_with_evidence():
     result = await call("get_figures", year=2026, keys=["personfradrag", "bundskat"])
     assert not result.is_error
