@@ -25,7 +25,7 @@ Other MCP clients can run the same command over stdio.
 | `get_kommune(year, kommune)` | Kommuneskat, kirkeskat, skatteloftsnedslag and grundskyld |
 | `estimate_salary_tax(...)` | Income tax for an unmarried employee, with take-home pay and marginal rate |
 | `estimate_payslip(...)` | Trækprocent and månedsfradrag from a forskudsopgørelse, monthly payout, share vests and expected restskat (2026 onwards) |
-| `estimate_property_tax(...)` | Ejendomsværdiskat and grundskyld for an owner-occupied home, including the year it is bought, with the cap on grundskyld increases (2026 onwards) |
+| `estimate_property_tax(...)` | Ejendomsværdiskat and grundskyld for an owner-occupied home, including the year it is bought, with the cap on grundskyld increases (2026 onwards). Enter the valuation for the year before the income year: the 2026 tax uses the 2025 ejendomsværdi and grundværdi |
 
 Example questions:
 

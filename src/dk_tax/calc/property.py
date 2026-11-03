@@ -46,6 +46,9 @@ class PropertyTax(BaseModel):
     """Ejendomsværdiskat and grundskyld for one year. Kroner, rounded to øre."""
 
     year: int
+    vurderingsaar: int
+    """The valuation year the ejendomsværdi and grundværdi should come from: the year
+    before the income year (§ 13, stk. 2; § 17, stk. 2)."""
     ejendomsvaerdiskat_grundlag: Decimal
     ejendomsvaerdiskat_dage: int
     """Days of 360 with ejendomsværdiskat (from the overtagelsesdag or indflytningsdag)."""
@@ -145,6 +148,7 @@ def estimate_property_tax(
 
     return PropertyTax(
         year=year,
+        vurderingsaar=year - 1,
         ejendomsvaerdiskat_grundlag=_ore(evs_grundlag),
         ejendomsvaerdiskat_dage=evs_dage,
         ejendomsvaerdiskat_ejendom=_ore(evs_ejendom),

@@ -29,6 +29,7 @@ def test_2026_hand_calculation_above_progressionsgraense():
     assert r.grundskyld_grundlag == 1_600_000
     assert r.grundskyld == Decimal("9600.00")
     assert r.grundskyld_oevre_graense  # no previous-year grundskyld given, so § 45 not applied
+    assert r.vurderingsaar == 2025  # §§ 13, 17, stk. 2: the previous year's valuation
     assert r.all_verified
     assert {"ejendomsvaerdiskat_sats", "ejendomsvaerdiskat_progressionsgraense"} <= set(r.sources)
 

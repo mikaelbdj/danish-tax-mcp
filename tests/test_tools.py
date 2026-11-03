@@ -116,6 +116,7 @@ async def test_estimate_property_tax_tool():
     assert tax["grundskyld"] == "4228.00"
     assert result.structured_content["kommune"]["kommune"]["grundskyldspromille"] == "6"
     assert tax["sources"]["ejendomsvaerdiskat_sats"]["status"] == "verified"
+    assert tax["vurderingsaar"] == 2025
 
 
 async def test_estimate_property_tax_rejects_2025():
