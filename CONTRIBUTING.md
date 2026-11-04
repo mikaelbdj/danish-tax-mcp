@@ -56,7 +56,7 @@ everyone gets the same results.
 
 ## Evals
 
-`evals/run_evals.py` asks Claude eight realistic questions with only this server attached
+`evals/run_evals.py` asks Claude nine realistic questions with only this server attached
 and checks which tools it called, with what inputs, and that the answer cites a source and
 the income year. It uses your Claude Code login and costs about half a dollar per run, so
 it is run by hand before a release, not in CI:

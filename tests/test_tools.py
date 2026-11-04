@@ -30,6 +30,7 @@ async def test_tool_surface():
         "estimate_couple_tax",
         "lookup_abis",
         "get_jv_section",
+        "estimate_lager_gains",
     }
     assert set(tools["get_figures"].input_schema["properties"]) == {"year", "keys"}
 
@@ -338,3 +339,62 @@ async def test_server_reports_the_package_version():
 
     async with Client(server) as client:
         assert client.server_info.version == version("danish-tax-mcp")
+
+
+async def test_estimate_lager_gains_classifies_by_isin(monkeypatch):
+    from datetime import date
+
+    from dk_tax import abis
+
+    looked_up = []
+
+    def fake(query, year):
+        looked_up.append((query, year))
+        on = query == "IE00B4L5Y983"
+        # the bond ETF is on the list but not registered for 2026: a known investeringsselskab
+        entry = abis.AbisEntry(isin=query, name="x", company=None, tax_residence=None,
+                               registered_years=[2026] if on else [2021], deregistered_years=[])  # fmt: skip
+        return abis.AbisResult(year=year, query=query, on_list=on, matches=[entry], published=date(2026, 11, 3),
+                               source="https://skat.dk/media/x/abis.xlsx")  # fmt: skip
+
+    monkeypatch.setattr(abis, "lookup", fake)
+    result = await call(
+        "estimate_lager_gains",
+        year=2026,
+        funds=[
+            {"name": "World ETF", "isin": "IE00B4L5Y983", "value_start": 100_000, "value_end": 125_000},
+            {"name": "Bond ETF", "isin": "IE00B3F81R35", "value_start": 50_000, "value_end": 51_000},
+        ],
+    )
+    assert not result.is_error, result.content[0].text
+    tax = result.structured_content["tax"]
+    assert (tax["aktieindkomst"], tax["kapitalindkomst"]) == ("25000.00", "1000.00")
+    assert len(looked_up) == 2
+    assert result.structured_content["abis_published"] == "2026-11-03"
+
+
+async def test_estimate_lager_gains_needs_a_classification():
+    result = await call("estimate_lager_gains", year=2026, funds=[{"name": "Some fund", "value_end": 10}])
+    assert result.is_error
+    assert "aktiebaseret" in result.content[0].text
+
+
+async def test_estimate_lager_gains_refuses_to_guess_an_isin_not_on_the_list(monkeypatch):
+    """Not on the ABIS list at all could be an ordinary share (taxed when sold), not a
+    § 19 C fund: ask instead of classifying it as kapitalindkomst."""
+    from datetime import date
+
+    from dk_tax import abis
+
+    def fake(query, year):
+        return abis.AbisResult(year=year, query=query, on_list=False, matches=[], published=date(2026, 11, 3),
+                               source="https://skat.dk/media/x/abis.xlsx")  # fmt: skip
+
+    monkeypatch.setattr(abis, "lookup", fake)
+    result = await call(
+        "estimate_lager_gains",
+        year=2026,
+        funds=[{"name": "Apple", "isin": "US0378331005", "value_start": 10_000, "value_end": 12_000}],
+    )
+    assert result.is_error
+    assert "not on SKAT's ABIS list" in result.content[0].text

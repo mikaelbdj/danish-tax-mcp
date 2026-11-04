@@ -96,6 +96,15 @@ CASES = [
         year="2026",
     ),
     Case(
+        "lager",
+        "Jeg ejer ETF'en iShares Core MSCI World (ISIN IE00B4L5Y983) i et almindeligt depot. Den var 200.000 kr. "
+        "værd 1. januar 2026 og 230.000 kr. 31. december 2026, og jeg købte for 20.000 kr. mere i løbet af året. "
+        "Hvad skal jeg beskattes af for 2026?",
+        tool="estimate_lager_gains",
+        inputs={"year": 2026},
+        year="2026",
+    ),
+    Case(
         "jv",
         "Hvad står der i Den juridiske vejledning, afsnit C.A.8.2? Giv et kort resumé med link.",
         tool="get_jv_section",

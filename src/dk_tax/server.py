@@ -14,6 +14,8 @@ from pydantic import BaseModel, ConfigDict
 from dk_tax import abis, jv
 from dk_tax.calc.couple import CoupleTax
 from dk_tax.calc.couple import estimate_couple_tax as _couple
+from dk_tax.calc.lager import Fund, LagerGains
+from dk_tax.calc.lager import estimate_lager_gains as _lager
 from dk_tax.calc.payslip import Payslip
 from dk_tax.calc.payslip import estimate_payslip as _payslip
 from dk_tax.calc.property import PropertyTax
@@ -468,9 +470,13 @@ def estimate_share_income_tax(
     selling the vested shares later, or their dividends, is aktieindkomst. Aktiesparekonto
     is a separate 17 % scheme and does not belong here.
     boersnoteret_udbytte_gevinst / boersnoteret_tab: the year's dividends plus gains, and
-      losses (as a positive amount), on listed shares and listed funds taxed as aktieindkomst.
-      A listed loss only offsets listed income; the rest is carried forward as a loss
+      losses (as a positive amount), on listed shares (ABL § 12). A listed loss only offsets
+      listed income; the rest is carried forward as a loss
       (boersnoteret_tab_fremfoert_naeste_aar) and never gives negative tax.
+      Funds on the ABIS list (aktiebaserede investeringsselskaber, most ETFs) are taxed on
+      the lagerprincip: use estimate_lager_gains, which says where their result goes (a net
+      gain here, a net loss in oevrig_aktieindkomst, since those losses are not limited,
+      JV C.B.4.3.2).
     boersnoteret_tab_fremfoert: unused listed-share losses from earlier years (årsopgørelse).
     oevrig_aktieindkomst: unlisted shares: dividends plus gains minus losses; may be negative.
       Negative aktieindkomst gives a negative tax credited against the other tax.
@@ -551,3 +557,76 @@ def get_jv_section(section: str) -> jv.JvSection:
         raise ToolError(str(e)) from e
     except OSError as e:
         raise ToolError(f"Could not read Den juridiske vejledning from info.skat.dk: {e}") from e
+
+
+class FundYear(BaseModel):
+    """One fund (investeringsselskab, e.g. an ETF) for one year. Amounts in DKK."""
+
+    model_config = ConfigDict(extra="forbid", use_attribute_docstrings=True)
+
+    name: str
+    isin: str | None = None
+    """Used to look the fund up on SKAT's ABIS list when aktiebaseret is not given."""
+    aktiebaseret: bool | None = None
+    """On SKAT's ABIS list for the year. Leave out to look it up by isin (a fund not on the
+    list at all is not guessed: then say false if it is a fund)."""
+    value_start: int = 0
+    """Market value on 1 January (0 if bought during the year)."""
+    value_end: int = 0
+    """Market value on 31 December (0 if all sold)."""
+    purchases: int = 0
+    """Total paid for units bought during the year."""
+    sales: int = 0
+    """Total received for units sold during the year."""
+
+
+class LagerGainsResult(BaseModel):
+    tax: LagerGains
+    abis_published: date | None
+    """Publication date of the ABIS list used for funds classified by ISIN (None if none were)."""
+    abis_source: str | None
+
+
+@server.tool()
+def estimate_lager_gains(year: int, funds: list[FundYear]) -> LagerGainsResult:
+    """Taxable gain or loss for the year on investeringsselskaber (most ETFs and many foreign
+    funds), which are taxed every year on the change in value, sold or not (lagerbeskatning,
+    ABL § 23, stk. 8).
+
+    Per fund: value_end + sales - value_start - purchases (ABL § 23, stk. 2, lot by lot).
+    The values are on the broker's year-end statements; purchases and sales are the year's
+    totals. A fund on SKAT's ABIS list (aktiebaseret, § 19 B) gives aktieindkomst; any
+    other investeringsselskab (§ 19 C) gives kapitalindkomst. Give aktiebaseret, or an
+    isin and the list is checked for that year. Then pass til_estimate_share_income_tax to
+    estimate_share_income_tax (added to the person's other share income) and
+    til_net_capital_income into net_capital_income for the salary tools. A net loss on
+    aktiebaserede funds is not limited like listed-share losses (JV C.B.4.3.2).
+    Not for ordinary shares (taxed when sold), Danish minimumsbeskattede
+    investeringsforeninger (taxed when sold, ABL § 21) or an aktiesparekonto (its own 17 %
+    tax). Distributions (udbytte) from the funds are taxed separately as dividends.
+    Cite ABL § 23 and the ABIS list date. Not tax advice.
+    """
+    published, source = None, None
+    resolved = []
+    for f in funds:
+        aktiebaseret = f.aktiebaseret
+        if aktiebaseret is None and f.isin:
+            try:
+                r = abis.lookup(f.isin, year)
+            except LookupError as e:
+                raise ToolError(str(e)) from e
+            except OSError as e:
+                raise ToolError(f"Could not read the ABIS list from skat.dk: {e}") from e
+            if not r.matches:
+                raise ToolError(
+                    f"{f.name} ({f.isin}) is not on SKAT's ABIS list at all. If it is an investeringsselskab "
+                    "(a fund), it is obligationsbaseret: pass aktiebaseret=false. An ordinary share is not "
+                    "lagerbeskattet: use estimate_share_income_tax when it is sold."
+                )
+            aktiebaseret, published, source = bool(r.on_list), r.published, r.source
+        resolved.append(Fund(**{**f.model_dump(), "aktiebaseret": aktiebaseret}))
+    try:
+        tax = _lager(year, resolved)
+    except ValueError as e:
+        raise ToolError(f"{e}; give aktiebaseret or an isin") from e
+    return LagerGainsResult(tax=tax, abis_published=published, abis_source=source)

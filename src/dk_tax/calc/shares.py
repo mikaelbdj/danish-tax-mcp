@@ -10,7 +10,9 @@ Rules, with sources:
   part above it credited in the slutskat, and any excess over 27 % of the total (all of it if
   aktieindkomst is negative) is credited too. Net effect: tax minus withholding.
 - Listed shares (ABL § 13 A, JV C.B.2.2.1.4): a loss only offsets the year's total dividends
-  and gains on listed shares; the year's loss first, then older losses; the rest is carried
+  and gains on listed shares (including net gains on aktiebaserede investeringsselskaber,
+  § 19 B; their losses are not limited, JV C.B.4.3.2, and belong in oevrig_aktieindkomst);
+  the year's loss first, then older losses; the rest is carried
   forward as a loss. It never makes aktieindkomst negative.
 - Unlisted shares (ABL § 13, JV C.B.2.2.1.3): the loss is part of aktieindkomst. Negative
   aktieindkomst gives a negative tax at the same rates (§ 8 a, stk. 5), credited in the

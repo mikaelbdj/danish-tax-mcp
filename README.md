@@ -16,7 +16,7 @@ claude mcp add dk-tax -- uvx danish-tax-mcp
 ```
 
 Other MCP clients can run the same command over stdio. To pin a version, use
-`uvx danish-tax-mcp@0.4.0`.
+`uvx danish-tax-mcp@0.4.1`.
 
 ## Tools
 
@@ -30,6 +30,7 @@ Other MCP clients can run the same command over stdio. To pin a version, use
 | `estimate_payslip(...)` | Trækprocent and månedsfradrag from a forskudsopgørelse, monthly payout, share vests and expected restskat, with an optional spouse (2026 onwards) |
 | `estimate_property_tax(...)` | Ejendomsværdiskat and grundskyld for an owner-occupied home, including the years it is bought and sold, with the cap on grundskyld increases (2026 onwards). Enter the valuation for the year before the income year: the 2026 tax uses the 2025 ejendomsværdi and grundværdi |
 | `estimate_share_income_tax(...)` | Skat af aktieindkomst (27 % and 42 %) for one person or a married couple, with withheld udbytteskat, losses on listed and unlisted shares, and amounts carried forward |
+| `estimate_lager_gains(year, funds)` | The year's taxable gain or loss on ETFs and other investeringsselskaber (lagerbeskatning), split into aktieindkomst and kapitalindkomst |
 | `lookup_abis(query, year)` | Whether a fund is on SKAT's list of aktiebaserede investeringsselskaber for a year, read live from skat.dk |
 | `get_jv_section(section)` | The current text of a section of Den juridiske vejledning, read live from info.skat.dk |
 
@@ -45,6 +46,8 @@ Example questions:
 - How much tax do I pay if I sell shares with a gain of 120.000 kr.?
 - My spouse is on unpaid parental leave. How much of their personfradrag can I use?
 - Is IE00B4L5Y983 on the positivliste, and how is it taxed?
+- My ETF was worth 200.000 kr. on 1 January and 230.000 kr. on 31 December, and I bought for 20.000 kr. What is taxed?
+- How much interest do I pay on restskat if I pay it in May?
 
 ## Coverage
 
