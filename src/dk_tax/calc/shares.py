@@ -112,8 +112,8 @@ def estimate_share_income_tax(
     oevrig_aktieindkomst: unlisted shares: dividends plus gains minus losses (can be negative).
     udbytteskat_indeholdt: Danish udbytteskat withheld on the dividends.
     negativ_skat_fremfoert: unused negative share tax from earlier years.
-    oevrig_slutskat: the year's other slutskat (income tax and AM-bidrag), which negative tax
-      can be credited against. None: unknown.
+    oevrig_slutskat: the year's other slutskat (income tax, AM-bidrag and ejendomsværdiskat,
+      JV C.H.4.1.1 (2026-2)), which negative tax can be credited against. None: unknown.
     """
     person = {k: v for k, v in locals().items() if k in INPUTS}
     return _compute(year, [person])[0]

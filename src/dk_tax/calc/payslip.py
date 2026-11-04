@@ -1,7 +1,9 @@
 """Skattekort and monthly payslip for an employee, from a forskudsopgørelse.
 
 Rules, with sources:
-- Trækprocent (indeholdelsesprocent): BEK nr 1094 af 10/09/2025 § 6 (income year 2026):
+- Trækprocent (indeholdelsesprocent): BEK nr 1094 af 10/09/2025 § 6 (income year 2026; the
+  amendment BEK nr 1828 af 29/12/2025 only changes cross-references in § 1) and BEK nr 772
+  af 08/09/2026 § 6 (from 2027, same formula):
   kommune + kirke + bundskat, plus mellemskat (after skatteloft), topskat and toptopskat,
   each without personfradrag, as a percentage of personlig indkomst (mellemskat: plus
   positive net capital income above its bundgrænse). Components above 0 only.
@@ -176,7 +178,7 @@ def estimate_payslip(
     forskud = year_tax(include_bonus_in_forskud, include_shares_in_forskud)
     actual = year_tax(True, True)
 
-    # Trækprocent (BEK 1094/2025 § 6)
+    # Trækprocent (BEK 1094/2025 § 6; BEK 772/2026 § 6 from 2027)
     pi = forskud.personlig_indkomst
     kapital_over = max(Decimal(0), D(net_capital_income) - figures["mellemskat_kapitalindkomst_bundfradrag"].value)
     components = [

@@ -453,9 +453,10 @@ def estimate_share_income_tax(
       Negative aktieindkomst gives a negative tax credited against the other tax.
     udbytteskat_indeholdt: Danish udbytteskat withheld (27 %), not foreign withholding tax.
     negativ_skat_fremfoert: unused negative share tax from earlier years.
-    oevrig_slutskat: the year's other tax, e.g. skat_i_alt from estimate_salary_tax, which
-      negative tax is credited against. Without it slutskat_ukendt is true and all negative
-      tax is assumed usable: say so.
+    oevrig_slutskat: the year's other tax, which negative tax is credited against:
+      skat_i_alt from estimate_salary_tax plus any ejendomsværdiskat (part of the slutskat,
+      JV C.H.4.1.1); leave grundskyld out (not confirmed). Without it slutskat_ukendt is
+      true and all negative tax is assumed usable: say so.
     netto is what shares add to (or, if negative, take off) the year's tax.
     Ask whether the shares are listed: the loss rules differ.
     spouse: for a married couple living together at year end, the spouse's share income
