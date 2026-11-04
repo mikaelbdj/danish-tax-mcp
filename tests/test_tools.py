@@ -27,6 +27,7 @@ async def test_tool_surface():
         "estimate_payslip",
         "estimate_property_tax",
         "estimate_share_income_tax",
+        "estimate_couple_tax",
     }
     assert set(tools["get_figures"].input_schema["properties"]) == {"year", "keys"}
 
@@ -206,3 +207,31 @@ async def test_estimate_share_income_tax_unknown_year():
     result = await call("estimate_share_income_tax", year=1999, boersnoteret_udbytte_gevinst=1_000)
     assert result.is_error
     assert "1999" in result.content[0].text
+
+
+async def test_estimate_couple_tax_tool():
+    """Spouse 2 without income: their whole personfradrag value goes to spouse 1 (§ 10, stk. 2)."""
+    result = await call(
+        "estimate_couple_tax",
+        year=2026,
+        kommune="Aarhus",
+        spouse_1={"gross_salary": 600_000, "folkekirke_member": False},
+        spouse_2={"gross_salary": 0, "folkekirke_member": False, "atp_full_time": False},
+    )
+    assert not result.is_error, result.content[0].text
+    tax = result.structured_content["tax"]
+    assert Decimal(tax["overfoert_personfradrag_2_til_1"]) > 0
+    assert tax["spouse_2"]["indkomstskat"] == "0.00"
+    assert Decimal(tax["skat_i_alt"]) == Decimal(tax["spouse_1"]["skat_i_alt"]) + Decimal(tax["spouse_2"]["skat_i_alt"])
+
+
+async def test_estimate_couple_tax_rejects_unknown_fields():
+    result = await call(
+        "estimate_couple_tax",
+        year=2026,
+        kommune="Aarhus",
+        spouse_1={"gross_salary": 600_000, "folkekirke_member": False, "salary": 1},
+        spouse_2={"gross_salary": 0, "folkekirke_member": False},
+    )
+    assert result.is_error
+    assert "salary" in result.content[0].text  # names the unknown field

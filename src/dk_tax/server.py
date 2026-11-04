@@ -7,8 +7,10 @@ from typing import Literal
 
 from mcp.server import MCPServer
 from mcp.server.mcpserver.exceptions import ToolError
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
+from dk_tax.calc.couple import CoupleTax
+from dk_tax.calc.couple import estimate_couple_tax as _couple
 from dk_tax.calc.payslip import Payslip
 from dk_tax.calc.payslip import estimate_payslip as _payslip
 from dk_tax.calc.property import PropertyTax
@@ -158,8 +160,9 @@ def estimate_salary_tax(
     The result includes til_udbetaling (take-home), effektiv_skatteprocent and marginalskat
     (share of the next 1.000 kr. that goes to tax), and the source, verified date and status
     of every figure used: cite them with the income year, and flag any figure that is not
-    'verified' (all_verified tells you at a glance). Not covered: married couples,
-    aktieindkomst, ejendomsværdiskat. Not tax advice.
+    'verified' (all_verified tells you at a glance). For a married couple living together
+    at year end use estimate_couple_tax; aktieindkomst: estimate_share_income_tax;
+    ejendomsværdiskat: estimate_property_tax. Not tax advice.
     """
     kommune_result = _kommune(year, kommune)
     k = kommune_result.kommune
@@ -183,6 +186,76 @@ def estimate_salary_tax(
     except LookupError as e:
         raise ToolError(str(e)) from e
     return SalaryTaxResult(tax=tax, kommune=kommune_result)
+
+
+class SpouseIncome(BaseModel):
+    """One spouse's yearly income, as for estimate_salary_tax. All amounts DKK."""
+
+    model_config = ConfigDict(extra="forbid", use_attribute_docstrings=True)
+
+    gross_salary: int
+    """Total salary INCLUDING own pension share, EXCLUDING the employer's share; 0 if none."""
+    folkekirke_member: bool
+    atp_full_time: bool = True
+    """Statutory full-time ATP; set False (and atp_own/atp_employer) for part-time or no job."""
+    atp_own: int = 0
+    atp_employer: int = 0
+    pension_own: int = 0
+    pension_employer: int = 0
+    private_ratepension: int = 0
+    other_personal_income: int = 0
+    """E.g. SU, dagpenge or pension paid out: personal income without AM-bidrag."""
+    net_capital_income: int = 0
+    """This spouse's own nettokapitalindkomst (interest on loans in their name is negative)."""
+    other_deductions: int = 0
+    within_15_years_of_pension: bool = False
+
+
+class CoupleTaxResult(BaseModel):
+    tax: CoupleTax
+    kommune: KommuneResult
+
+
+@server.tool()
+def estimate_couple_tax(
+    year: int,
+    kommune: str,
+    spouse_1: SpouseIncome,
+    spouse_2: SpouseIncome,
+    married_all_year: bool = True,
+) -> CoupleTaxResult:
+    """Estimate the income tax of a married couple living together at year end, one year.
+
+    Each spouse is taxed on their own income (same inputs as estimate_salary_tax), and the
+    law then moves amounts between them: unused personfradrag, negative kapitalindkomst
+    against the other's positive (bundskat, mellemskat, the 8 % nedslag on the first
+    50.000 kr.), an unused capital grundbeløb for mellemskat, and an underskud. The overfoert_*
+    fields show what moved. married_all_year: False if they married (or moved in as
+    spouses) during the year; mellemskat on capital income is then computed per spouse.
+    Use it only for married couples or registered partners; cohabiting unmarried couples
+    are taxed as singles (estimate_salary_tax for each). Mortgage interest belongs to the
+    spouse(s) whose name the loan is in, as negative net_capital_income.
+    marginalskat per spouse is the household's extra tax on that spouse's next 1.000 kr.
+    Not covered: aktieindkomst (estimate_share_income_tax), business income, underskud from
+    earlier years, the skattekort (estimate_payslip is for one person).
+    Cite the sources with the income year and flag any figure that is not 'verified'.
+    Not tax advice.
+    """
+    kommune_result = _kommune(year, kommune)
+    k = kommune_result.kommune
+
+    def inputs(sp: SpouseIncome) -> dict:
+        d = sp.model_dump()
+        d["kirkeskat"] = k.kirkeskat if d.pop("folkekirke_member") else 0
+        return d
+
+    try:
+        tax = _couple(
+            year, inputs(spouse_1), inputs(spouse_2), kommuneskat=k.kommuneskat, married_all_year=married_all_year
+        )
+    except (LookupError, ValueError) as e:
+        raise ToolError(str(e)) from e
+    return CoupleTaxResult(tax=tax, kommune=kommune_result)
 
 
 class PayslipResult(BaseModel):

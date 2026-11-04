@@ -115,7 +115,7 @@ def _capped_bracket(
     f: Figures,
     rate_key: str,
     graense_key: str,
-    kapital_bundfradrag_key: str,
+    kapital_bundfradrag: Decimal,
     kommuneskat: Decimal,
     personlig_indkomst: Decimal,
     positiv_kapitalindkomst: Decimal,
@@ -128,7 +128,7 @@ def _capped_bracket(
     """
     rate = f.value(rate_key)  # percent
     graense = f.value(graense_key)
-    kapital = _pos(positiv_kapitalindkomst - f.value(kapital_bundfradrag_key))
+    kapital = _pos(positiv_kapitalindkomst - kapital_bundfradrag)
 
     on_personal = _pos(personlig_indkomst - graense)
     on_combined = _pos(personlig_indkomst + kapital - graense)
@@ -192,145 +192,216 @@ def estimate_salary_tax(
     return result.model_copy(update={"marginalskat": _ore(marginal)})
 
 
-def _compute(
-    year: int,
-    gross_salary: Amount,
-    *,
-    kommuneskat: Amount,
-    kirkeskat: Amount,
-    atp_full_time: bool,
-    atp_own: Amount,
-    atp_employer: Amount,
-    pension_own: Amount,
-    pension_employer: Amount,
-    private_ratepension: Amount,
-    other_personal_income: Amount,
-    share_compensation: Amount,
-    net_capital_income: Amount,
-    other_deductions: Amount,
-    within_15_years_of_pension: bool,
-) -> SalaryTax:
-    D = lambda x: Decimal(str(x))  # noqa: E731
-    f = Figures(year)
-    if atp_full_time:  # full-time monthly-paid employee, figures are per month
-        atp_own = f.value("atp_loenmodtager_maaned") * 12
-        atp_employer = f.value("atp_arbejdsgiver_maaned") * 12
-    kommune, kirke = D(kommuneskat), D(kirkeskat)
-    nki = D(net_capital_income)
-    atp = D(atp_own) + D(atp_employer)
-    pension = D(pension_own) + D(pension_employer)
+def _compute(year: int, gross_salary: Amount, **kwargs) -> SalaryTax:
+    p = _Person(year, gross_salary, **kwargs)
+    p.gross_taxes()
+    p.underskud()
+    p.personfradrag()
+    p.nedslag()
+    return p.result()
 
-    # AM-bidrag and personlig indkomst
-    am_grundlag = D(gross_salary) - D(atp_own) - D(pension_own)
-    am_bidrag = _kr(am_grundlag * f.rate("am_bidrag"))
-    # Shares are B-income: AM-bidrag (AMBL § 2, stk. 2), but outside the beskæftigelsesfradrag base.
-    am_aktieloen = _kr(D(share_compensation) * f.rate("am_bidrag"))
-    personlig = (
-        am_grundlag
-        - am_bidrag
-        + D(share_compensation)
-        - am_aktieloen
-        + D(other_personal_income)
-        - D(private_ratepension)
-    )
 
-    # Ligningsmæssige fradrag
-    besk_grundlag = am_grundlag + atp + pension
-    besk = _kr(min(besk_grundlag * f.rate("beskaeftigelsesfradrag"), f.value("beskaeftigelsesfradrag_max")))
-    job = _kr(
-        min(_pos(besk_grundlag - f.value("jobfradrag_bundgraense")) * f.rate("jobfradrag"), f.value("jobfradrag_max"))
-    )
-    am_paa_pension = _kr((atp + pension) * f.rate("am_bidrag"))
-    ep_grundlag = min(
-        atp + pension - am_paa_pension + D(private_ratepension), f.value("ekstra_pensionsfradrag_max_grundlag")
-    )
-    ep_rate = f.rate("ekstra_pensionsfradrag_15aar" if within_15_years_of_pension else "ekstra_pensionsfradrag")
-    ekstra = _kr(ep_grundlag * ep_rate)
-    ligningsmaessige = besk + job + ekstra + D(other_deductions)
-    skattepligtig = personlig + nki - ligningsmaessige
+class _Person:
+    """One person's calculation, in steps, so a couple can exchange amounts between them.
 
-    # Taxes before credits
-    kk_rate = (kommune + kirke) / 100
-    bund_rate = f.rate("bundskat")
-    kommune_kirke = _pos(skattepligtig) * kk_rate
-    bundskat = _pos(personlig + _pos(nki)) * bund_rate
+    Single: gross_taxes, underskud, personfradrag, nedslag, result. A couple (calc/couple.py)
+    passes joint bases to gross_taxes and moves unused amounts between the steps.
+    """
 
-    # Brackets
-    zero = Decimal(0)
-    if year < REFORM_YEAR:
-        mellemskat, toptopskat = zero, zero
-        topskat = _capped_bracket(
-            f, "topskat", "topskat_graense", "topskat_kapitalindkomst_bundfradrag", kommune, personlig, _pos(nki)
+    def __init__(
+        self,
+        year: int,
+        gross_salary: Amount,
+        *,
+        kommuneskat: Amount,
+        kirkeskat: Amount = 0,
+        atp_full_time: bool = False,
+        atp_own: Amount = 0,
+        atp_employer: Amount = 0,
+        pension_own: Amount = 0,
+        pension_employer: Amount = 0,
+        private_ratepension: Amount = 0,
+        other_personal_income: Amount = 0,
+        share_compensation: Amount = 0,
+        net_capital_income: Amount = 0,
+        other_deductions: Amount = 0,
+        within_15_years_of_pension: bool = False,
+    ):
+        D = lambda x: Decimal(str(x))  # noqa: E731
+        self.year = year
+        self.f = f = Figures(year)
+        if atp_full_time:  # full-time monthly-paid employee, figures are per month
+            atp_own = f.value("atp_loenmodtager_maaned") * 12
+            atp_employer = f.value("atp_arbejdsgiver_maaned") * 12
+        self.kommune, kirke = D(kommuneskat), D(kirkeskat)
+        self.nki = D(net_capital_income)
+        atp = D(atp_own) + D(atp_employer)
+        pension = D(pension_own) + D(pension_employer)
+        self.gross = D(gross_salary)
+        self.cash_deductions = D(pension_own) + D(atp_own)
+        self.share_compensation = D(share_compensation)
+
+        # AM-bidrag and personlig indkomst
+        self.am_grundlag = self.gross - D(atp_own) - D(pension_own)
+        self.am_bidrag = _kr(self.am_grundlag * f.rate("am_bidrag"))
+        # Shares are B-income: AM-bidrag (AMBL § 2, stk. 2), but outside the beskæftigelsesfradrag base.
+        self.am_aktieloen = _kr(self.share_compensation * f.rate("am_bidrag"))
+        self.personlig = (
+            self.am_grundlag
+            - self.am_bidrag
+            + self.share_compensation
+            - self.am_aktieloen
+            + D(other_personal_income)
+            - D(private_ratepension)
         )
-    else:
-        mellemskat = _capped_bracket(
-            f,
-            "mellemskat",
-            "mellemskat_graense",
-            "mellemskat_kapitalindkomst_bundfradrag",
-            kommune,
-            personlig,
-            _pos(nki),
+
+        # Ligningsmæssige fradrag
+        besk_grundlag = self.am_grundlag + atp + pension
+        self.besk = _kr(min(besk_grundlag * f.rate("beskaeftigelsesfradrag"), f.value("beskaeftigelsesfradrag_max")))
+        self.job = _kr(
+            min(
+                _pos(besk_grundlag - f.value("jobfradrag_bundgraense")) * f.rate("jobfradrag"),
+                f.value("jobfradrag_max"),
+            )
         )
-        topskat = _pos(personlig - f.value("topskat_graense")) * f.rate("topskat")
-        toptopskat = _pos(personlig - f.value("toptopskat_graense")) * f.rate("toptopskat")
+        am_paa_pension = _kr((atp + pension) * f.rate("am_bidrag"))
+        ep_grundlag = min(
+            atp + pension - am_paa_pension + D(private_ratepension), f.value("ekstra_pensionsfradrag_max_grundlag")
+        )
+        ep_rate = f.rate("ekstra_pensionsfradrag_15aar" if within_15_years_of_pension else "ekstra_pensionsfradrag")
+        self.ekstra = _kr(ep_grundlag * ep_rate)
+        self.ligningsmaessige = self.besk + self.job + self.ekstra + D(other_deductions)
+        self.skattepligtig = self.personlig + self.nki - self.ligningsmaessige
 
-    # Credits, in the order of PSL §§ 13, 9, 12 and 11. Each reduces taxes to at most 0.
-    taxes = {
-        "kommune_kirke": kommune_kirke,
-        "bundskat": bundskat,
-        "mellemskat": mellemskat,
-        "topskat": topskat,
-        "toptopskat": toptopskat,
-    }
-    # § 13, stk. 1: an underskud, valued at the kommune + kirke rate, reduces the state taxes
-    underskud_rest = _credit(taxes, _pos(-skattepligtig) * kk_rate, STATE_TAXES)
-    underskud_fremfoert = underskud_rest / kk_rate if kk_rate else _pos(-skattepligtig)
-    # § 9: skatteværdi of personfradrag against its own tax (bundskat value then down the
-    # state brackets); § 12, stk. 2: what is left reduces the other taxes
-    personfradrag = f.value("personfradrag")
-    kommune_rest = _credit(taxes, personfradrag * kk_rate, ["kommune_kirke"])
-    bund_rest = _credit(taxes, personfradrag * bund_rate, STATE_TAXES)
-    kommune_rest = _credit(taxes, kommune_rest, STATE_TAXES)
-    bund_rest = _credit(taxes, bund_rest, ["kommune_kirke"])
-    # The tax lines are shown after personfradrag and before the § 11 nedslag, which is its
-    # own line (kompensation), as in svmn.dk's worked example.
-    kommune_kirke, bundskat = taxes["kommune_kirke"], taxes["bundskat"]
-    mellemskat, topskat, toptopskat = taxes["mellemskat"], taxes["topskat"], taxes["toptopskat"]
-    # § 11: nedslag for negative nettokapitalindkomst, in the order of § 11, stk. 1
-    nedslag = min(_pos(-nki), f.value("negativ_kapitalindkomst_kompensation_graense")) * f.rate(
-        "negativ_kapitalindkomst_kompensation"
-    )
-    nedslag_rest = _credit(taxes, nedslag, [*STATE_TAXES, "kommune_kirke"])
-    kompensation = nedslag - nedslag_rest
+        self.kk_rate = (self.kommune + kirke) / 100
+        self.bund_rate = f.rate("bundskat")
+        self.underskud_rest = Decimal(0)  # kroner
+        self.personfradrag_rest = Decimal(0)  # skatteværdi
+        self.nedslag_rest = Decimal(0)
+        self.kompensation = Decimal(0)
 
-    indkomstskat = sum(taxes.values(), Decimal(0))
-    skat_i_alt = _ore(indkomstskat + am_bidrag + am_aktieloen)
-    gross = D(gross_salary)
-    return SalaryTax(
-        year=year,
-        am_bidrag_grundlag=am_grundlag,
-        am_bidrag=am_bidrag,
-        am_bidrag_aktieloen=am_aktieloen,
-        personlig_indkomst=personlig,
-        beskaeftigelsesfradrag=besk,
-        jobfradrag=job,
-        ekstra_pensionsfradrag=ekstra,
-        ligningsmaessige_fradrag=ligningsmaessige,
-        skattepligtig_indkomst=skattepligtig,
-        kommune_og_kirkeskat=_ore(kommune_kirke),
-        kompensation=_ore(kompensation),
-        bundskat=_ore(bundskat),
-        mellemskat=_ore(mellemskat),
-        topskat=_ore(topskat),
-        toptopskat=_ore(toptopskat),
-        indkomstskat=_ore(indkomstskat),
-        uudnyttet_personfradrag_vaerdi=_ore(kommune_rest + bund_rest),
-        uudnyttet_kompensation=_ore(nedslag_rest),
-        underskud_til_fremfoersel=_ore(underskud_fremfoert),
-        skat_i_alt=skat_i_alt,
-        til_udbetaling=_ore(gross - D(pension_own) - D(atp_own) - skat_i_alt),
-        effektiv_skatteprocent=_ore(skat_i_alt / (gross + D(share_compensation)) * 100) if gross else Decimal(0),
-        all_verified=f.all_verified(),
-        sources=f.sources(),
-    )
+    @property
+    def capped(self) -> tuple[str, str, str]:
+        """Rate, grænse and capital bundfradrag keys of the bracket with a capital part."""
+        if self.year < REFORM_YEAR:
+            return "topskat", "topskat_graense", "topskat_kapitalindkomst_bundfradrag"
+        return "mellemskat", "mellemskat_graense", "mellemskat_kapitalindkomst_bundfradrag"
+
+    def capped_bracket(self, positiv_kapital: Decimal, kapital_bundfradrag: Decimal | None = None) -> Decimal:
+        rate_key, graense_key, bundfradrag_key = self.capped
+        if kapital_bundfradrag is None:
+            kapital_bundfradrag = self.f.value(bundfradrag_key)
+        return _capped_bracket(
+            self.f, rate_key, graense_key, kapital_bundfradrag, self.kommune, self.personlig, positiv_kapital
+        )
+
+    def gross_taxes(
+        self,
+        *,
+        bund_kapital: Decimal | None = None,
+        capped_bracket: Decimal | None = None,
+        underskud_modtaget: Decimal = Decimal(0),
+    ) -> None:
+        """Taxes before credits. A couple passes the positive kapitalindkomst for bundskat
+        after netting (§ 6, stk. 3), the capped bracket computed jointly (§ 7, stk. 5-12),
+        and a spouse's underskud deducted in this person's skattepligtig indkomst (§ 13, stk. 2)."""
+        f = self.f
+        self.underskud_modtaget = underskud_modtaget
+        self.skattepligtig_efter = self.skattepligtig - underskud_modtaget
+        bund_kapital = _pos(self.nki) if bund_kapital is None else bund_kapital
+        if capped_bracket is None:
+            capped_bracket = self.capped_bracket(_pos(self.nki))
+        zero = Decimal(0)
+        self.taxes = {
+            "kommune_kirke": _pos(self.skattepligtig_efter) * self.kk_rate,
+            "bundskat": _pos(self.personlig + bund_kapital) * self.bund_rate,
+            "mellemskat": zero,
+            "topskat": zero,
+            "toptopskat": zero,
+        }
+        if self.year < REFORM_YEAR:
+            self.taxes["topskat"] = capped_bracket
+        else:
+            self.taxes["mellemskat"] = capped_bracket
+            self.taxes["topskat"] = _pos(self.personlig - f.value("topskat_graense")) * f.rate("topskat")
+            self.taxes["toptopskat"] = _pos(self.personlig - f.value("toptopskat_graense")) * f.rate("toptopskat")
+
+    def underskud(self) -> None:
+        """§ 13, stk. 1: an underskud, valued at the kommune + kirke rate, reduces the state taxes."""
+        rest = _credit(self.taxes, _pos(-self.skattepligtig_efter) * self.kk_rate, STATE_TAXES)
+        self.underskud_rest = rest / self.kk_rate if self.kk_rate else _pos(-self.skattepligtig_efter)
+
+    def underskud_value_from_spouse(self, value: Decimal) -> Decimal:
+        """§ 13, stk. 2, 2. pkt.: the skatteværdi of a spouse's remaining underskud against
+        this person's state taxes. Returns the value left."""
+        return _credit(self.taxes, value, STATE_TAXES)
+
+    def personfradrag(self) -> None:
+        """§ 9: skatteværdi of personfradrag against its own tax (bundskat value then down the
+        state brackets); § 12, stk. 2: what is left reduces the other taxes."""
+        pf = self.f.value("personfradrag")
+        kommune_rest = _credit(self.taxes, pf * self.kk_rate, ["kommune_kirke"])
+        bund_rest = _credit(self.taxes, pf * self.bund_rate, STATE_TAXES)
+        kommune_rest = _credit(self.taxes, kommune_rest, STATE_TAXES)
+        bund_rest = _credit(self.taxes, bund_rest, ["kommune_kirke"])
+        self.personfradrag_rest = kommune_rest + bund_rest
+        self._snapshot()
+
+    def personfradrag_from_spouse(self, value: Decimal) -> Decimal:
+        """§ 10, stk. 2: a spouse's unused skatteværdi reduces this person's taxes (§ 9 order)."""
+        rest = _credit(self.taxes, value, [*STATE_TAXES, "kommune_kirke"])
+        self._snapshot()
+        return rest
+
+    def _snapshot(self) -> None:
+        # The tax lines are shown after personfradrag and before the § 11 nedslag, which is its
+        # own line (kompensation), as in svmn.dk's worked example.
+        self.shown = dict(self.taxes)
+
+    def nedslag(self, negativ_kapital: Decimal | None = None, graense: Decimal | None = None) -> None:
+        """§ 11: nedslag for negative nettokapitalindkomst, in the order of § 11, stk. 1. A
+        couple passes the netted negative amount and the raised grænse (§ 11, stk. 3)."""
+        f = self.f
+        negativ_kapital = _pos(-self.nki) if negativ_kapital is None else negativ_kapital
+        graense = f.value("negativ_kapitalindkomst_kompensation_graense") if graense is None else graense
+        nedslag = min(negativ_kapital, graense) * f.rate("negativ_kapitalindkomst_kompensation")
+        self.nedslag_rest = _credit(self.taxes, nedslag, [*STATE_TAXES, "kommune_kirke"])
+        self.kompensation = nedslag - self.nedslag_rest
+
+    def nedslag_from_spouse(self, value: Decimal) -> Decimal:
+        """§ 11, stk. 4: a spouse's unused nedslag against this person's taxes."""
+        rest = _credit(self.taxes, value, [*STATE_TAXES, "kommune_kirke"])
+        self.kompensation += value - rest
+        return rest
+
+    def result(self) -> SalaryTax:
+        indkomstskat = sum(self.taxes.values(), Decimal(0))
+        skat_i_alt = _ore(indkomstskat + self.am_bidrag + self.am_aktieloen)
+        gross, shown = self.gross, self.shown
+        return SalaryTax(
+            year=self.year,
+            am_bidrag_grundlag=self.am_grundlag,
+            am_bidrag=self.am_bidrag,
+            am_bidrag_aktieloen=self.am_aktieloen,
+            personlig_indkomst=self.personlig,
+            beskaeftigelsesfradrag=self.besk,
+            jobfradrag=self.job,
+            ekstra_pensionsfradrag=self.ekstra,
+            ligningsmaessige_fradrag=self.ligningsmaessige,
+            skattepligtig_indkomst=self.skattepligtig,
+            kommune_og_kirkeskat=_ore(shown["kommune_kirke"]),
+            kompensation=_ore(self.kompensation),
+            bundskat=_ore(shown["bundskat"]),
+            mellemskat=_ore(shown["mellemskat"]),
+            topskat=_ore(shown["topskat"]),
+            toptopskat=_ore(shown["toptopskat"]),
+            indkomstskat=_ore(indkomstskat),
+            uudnyttet_personfradrag_vaerdi=_ore(self.personfradrag_rest),
+            uudnyttet_kompensation=_ore(self.nedslag_rest),
+            underskud_til_fremfoersel=_ore(self.underskud_rest),
+            skat_i_alt=skat_i_alt,
+            til_udbetaling=_ore(gross - self.cash_deductions - skat_i_alt),
+            effektiv_skatteprocent=_ore(skat_i_alt / (gross + self.share_compensation) * 100) if gross else Decimal(0),
+            all_verified=self.f.all_verified(),
+            sources=self.f.sources(),
+        )
