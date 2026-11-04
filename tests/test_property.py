@@ -160,3 +160,83 @@ def test_indflytning_in_the_next_year_means_no_ejendomsvaerdiskat_this_year():
     assert r.ejendomsvaerdiskat_dage == 0
     assert r.ejendomsvaerdiskat == 0
     assert r.grundskyld_dage == 60  # November and December
+
+
+# --- Selling during the year (ESL § 15, stk. 4; § 18, stk. 2) ----------------------------
+
+
+def test_sold_buyer_takes_over_6_may_seller_pays_125_days():
+    """§ 15, stk. 4 and § 18, stk. 2: the seller pays to and including the day before the
+    buyer's overtagelsesdag. LSF 113 2022/23, notes to § 72: to 5 May = 125 of 360 days.
+    16.320 x 125/360 = 5.666,67; 4.800 x 125/360 = 1.666,67."""
+    r = estimate_property_tax(
+        2026, 4_000_000, 1_000_000, grundskyldspromille=AARHUS, salg_overtagelsesdag=date(2026, 5, 6)
+    )
+    assert (r.ejendomsvaerdiskat_dage, r.grundskyld_dage) == (125, 125)
+    assert r.ejendomsvaerdiskat == Decimal("5666.67")
+    assert r.grundskyld == Decimal("1666.67")
+
+
+def test_moving_out_earlier_ends_only_the_ejendomsvaerdiskat():
+    """§ 15, stk. 4, 2. pkt.: an earlier udflytningsdag replaces the day before the
+    overtagelsesdag for ejendomsværdiskat (to and including 31 March = 90 days: 4.080).
+    Grundskyld still runs to 5 May (§ 18, stk. 2)."""
+    r = estimate_property_tax(
+        2026,
+        4_000_000,
+        1_000_000,
+        grundskyldspromille=AARHUS,
+        salg_overtagelsesdag=date(2026, 5, 6),
+        udflytningsdag=date(2026, 3, 31),
+    )
+    assert r.ejendomsvaerdiskat_dage == 90
+    assert r.ejendomsvaerdiskat == Decimal("4080.00")
+    assert r.grundskyld_dage == 125
+
+
+def test_bought_and_sold_in_the_same_year():
+    """Bought 1 April, buyer takes over 1 October: 1 April to 30 September = 180 days.
+    16.320 / 2 = 8.160; 4.800 / 2 = 2.400."""
+    r = estimate_property_tax(
+        2026,
+        4_000_000,
+        1_000_000,
+        grundskyldspromille=AARHUS,
+        overtagelsesdag=date(2026, 4, 1),
+        salg_overtagelsesdag=date(2026, 10, 1),
+    )
+    assert (r.ejendomsvaerdiskat_dage, r.grundskyld_dage) == (180, 180)
+    assert r.ejendomsvaerdiskat == Decimal("8160.00")
+    assert r.grundskyld == Decimal("2400.00")
+
+
+def test_sale_in_a_later_year_is_a_full_year_here():
+    r = estimate_property_tax(
+        2026, 4_000_000, 1_000_000, grundskyldspromille=AARHUS, salg_overtagelsesdag=date(2027, 2, 1)
+    )
+    assert r.ejendomsvaerdiskat_dage == 360
+
+
+def test_inconsistent_sale_dates_are_rejected():
+    with pytest.raises(ValueError, match="before the income year"):
+        estimate_property_tax(
+            2026, 4_000_000, 1_000_000, grundskyldspromille=AARHUS, salg_overtagelsesdag=date(2025, 12, 1)
+        )
+    with pytest.raises(ValueError, match="not after the overtagelsesdag"):
+        estimate_property_tax(
+            2026,
+            4_000_000,
+            1_000_000,
+            grundskyldspromille=AARHUS,
+            overtagelsesdag=date(2026, 6, 1),
+            salg_overtagelsesdag=date(2026, 6, 1),
+        )
+    with pytest.raises(ValueError, match="udflytningsdag"):
+        estimate_property_tax(
+            2026,
+            4_000_000,
+            1_000_000,
+            grundskyldspromille=AARHUS,
+            salg_overtagelsesdag=date(2026, 5, 6),
+            udflytningsdag=date(2026, 5, 10),
+        )

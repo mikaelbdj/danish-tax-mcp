@@ -350,6 +350,8 @@ def estimate_property_tax(
     grundskyld_forrige_aar: int | None = None,
     overtagelsesdag: date | None = None,
     indflytningsdag: date | None = None,
+    salg_overtagelsesdag: date | None = None,
+    udflytningsdag: date | None = None,
 ) -> PropertyTaxResult:
     """Estimate ejendomsværdiskat and grundskyld for an owner-occupied home (house or
     ejerlejlighed) for one income year, from 2026, including the year it is bought.
@@ -376,8 +378,11 @@ def estimate_property_tax(
       ejendomsværdiskat only. Moving from a rental: leave it out.
     Once the purchase is registered in the forskudsopgørelse (TastSelv), SKAT shows its own
     amounts under 'Eksisterende ejendomme og grunde'; suggest the user compare.
-    Selling during the year is not handled. Buyers get no transitional rabat (it lapses on a
-    change of owner).
+    salg_overtagelsesdag: if the home is sold, the BUYER's takeover date: the seller pays to
+      and including the day before. Bought and sold in the same year: pass both dates.
+    udflytningsdag: if the seller moves out before that, the last day of ejendomsværdiskat
+      (grundskyld still runs to the day before the buyer takes over).
+    Buyers get no transitional rabat (it lapses on a change of owner).
     Mortgage interest (rentefradrag) is not a property tax: pass it as negative
     net_capital_income to estimate_salary_tax.
     Cite the sources with the income year and flag any figure that is not 'verified'.
@@ -394,6 +399,8 @@ def estimate_property_tax(
             grundskyld_forrige_aar=grundskyld_forrige_aar,
             overtagelsesdag=overtagelsesdag,
             indflytningsdag=indflytningsdag,
+            salg_overtagelsesdag=salg_overtagelsesdag,
+            udflytningsdag=udflytningsdag,
         )
     except (LookupError, ValueError) as e:
         raise ToolError(str(e)) from e

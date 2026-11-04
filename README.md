@@ -26,7 +26,7 @@ Other MCP clients can run the same command over stdio.
 | `estimate_salary_tax(...)` | Income tax for an unmarried employee, with take-home pay and marginal rate |
 | `estimate_couple_tax(...)` | Income tax for a married couple living together at year end, with what moves between the spouses (personfradrag, kapitalindkomst, underskud) |
 | `estimate_payslip(...)` | Trækprocent and månedsfradrag from a forskudsopgørelse, monthly payout, share vests and expected restskat (2026 onwards) |
-| `estimate_property_tax(...)` | Ejendomsværdiskat and grundskyld for an owner-occupied home, including the year it is bought, with the cap on grundskyld increases (2026 onwards). Enter the valuation for the year before the income year: the 2026 tax uses the 2025 ejendomsværdi and grundværdi |
+| `estimate_property_tax(...)` | Ejendomsværdiskat and grundskyld for an owner-occupied home, including the years it is bought and sold, with the cap on grundskyld increases (2026 onwards). Enter the valuation for the year before the income year: the 2026 tax uses the 2025 ejendomsværdi and grundværdi |
 | `estimate_share_income_tax(...)` | Skat af aktieindkomst (27 % and 42 %) for one person or a married couple, with withheld udbytteskat, losses on listed and unlisted shares, and amounts carried forward |
 
 Example questions:
@@ -42,8 +42,7 @@ Example questions:
 
 Income years 2025 to 2027, and all 98 kommuner. 2023 is included only because the
 official worked example is from that year. The positivliste, foreign withholding tax on
-dividends, business income, the skattekort for couples, and selling a home during the
-year are not covered yet.
+dividends, business income and the skattekort for couples are not covered yet.
 
 ## Testing
 

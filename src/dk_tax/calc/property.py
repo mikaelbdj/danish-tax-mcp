@@ -13,14 +13,18 @@ nr. 1214/2024, 562/2025, 1779/2025 and 615/2026):
   also after a change of owner. Without last year's amount the full grundskyld is an
   upper bound.
 - Purchase year: both taxes are computed for the whole year (§§ 15, 18), then reduced to
-  the days from and including the overtagelsesdag (§ 15, stk. 3; § 18, stk. 2). For
+  the days from and including the overtagelsesdag (§ 15, stk. 3; § 18, stk. 2).
+- Sale: the seller pays to and including the day before the buyer's overtagelsesdag
+  (§ 15, stk. 4; § 18, stk. 2). For ejendomsværdiskat an earlier udflytningsdag replaces
+  that day (§ 15, stk. 4, 2. pkt.); JV C.H.4.2.4 (2026-2) requires that the home is
+  actually being sold (SKM2025.301.LSR). For
   ejendomsværdiskat a later indflytningsdag replaces it (§ 15, stk. 3); JV C.H.4.2.4
   (2026-2) treats that as an exception for owners moving from another owned home they are
   selling. The year is 360 days, 30 in each month (§ 72); the notes to § 72 in LSF 113
   2022/23 give the example 5 May = 125 of 360 days.
 
 Scope: owning and living in the home from the overtagelsesdag (or all year) to the end of
-the year. Not covered: sale during the year (§ 15, stk. 4), the transitional rabat for
+the year or the sale. Not covered: the transitional rabat for
 pre-2024 owners (§§ 35-43; it lapses on a change of owner, § 43, so buyers never have it),
 homes bought before 1 July 1998 (§§ 23-24), pensionistnedslag (§§ 25-26),
 grundforbedringer, renting out, tofamilieshuse, sommerhuse.
@@ -29,7 +33,7 @@ Assumptions: amounts are kept exact and rounded to øre for display; SKAT's own 
 these taxes is not confirmed. Day 31 of a month counts as day 30 (§ 72 has 30-day months).
 """
 
-from datetime import date
+from datetime import date, timedelta
 from decimal import ROUND_HALF_UP, Decimal
 
 from pydantic import BaseModel, ConfigDict
@@ -89,12 +93,22 @@ def days_from(d: date) -> int:
     return DAYS_IN_YEAR - days_through(d) + 1
 
 
-def _days_liable(start: date | None, year: int) -> int:
+def _days_liable(start: date | None, end: date | None, year: int) -> int:
+    """Days of the 360-day year from and including start to and including end. None, or a
+    date in another year, means the year's first or last day on that side."""
     if start is None or start.year < year:
-        return DAYS_IN_YEAR
-    if start.year > year:
+        first = 1
+    elif start.year > year:
         return 0
-    return days_from(start)
+    else:
+        first = days_through(start)  # the day number of start itself
+    if end is None or end.year > year:
+        last = DAYS_IN_YEAR
+    elif end.year < year:
+        return 0
+    else:
+        last = days_through(end)
+    return max(0, last - first + 1)
 
 
 def estimate_property_tax(
@@ -107,6 +121,8 @@ def estimate_property_tax(
     grundskyld_forrige_aar: Amount | None = None,
     overtagelsesdag: date | None = None,
     indflytningsdag: date | None = None,
+    salg_overtagelsesdag: date | None = None,
+    udflytningsdag: date | None = None,
 ) -> PropertyTax:
     """Ejendomsværdiskat and grundskyld for one year of owning and living in the home.
 
@@ -118,6 +134,9 @@ def estimate_property_tax(
       stigningsbegrænsning.
     overtagelsesdag: if bought during the year; earlier years mean a whole year.
     indflytningsdag: a later move-in that replaces the overtagelsesdag for ejendomsværdiskat.
+    salg_overtagelsesdag: if sold, the BUYER's overtagelsesdag; the seller pays to and
+      including the day before. A date in a later year means a whole year here.
+    udflytningsdag: if the seller moves out earlier, the last day of ejendomsværdiskat.
     """
     if year < FIRST_YEAR:
         raise ValueError(f"Property tax rules are implemented from income year {FIRST_YEAR}")
@@ -125,8 +144,26 @@ def estimate_property_tax(
         raise ValueError(f"overtagelsesdag {overtagelsesdag} is after the income year {year}")
     if indflytningsdag and overtagelsesdag and indflytningsdag < overtagelsesdag:
         raise ValueError(f"indflytningsdag {indflytningsdag} is before the overtagelsesdag {overtagelsesdag}")
-    gs_dage = _days_liable(overtagelsesdag, year)
-    evs_dage = min(gs_dage, _days_liable(indflytningsdag, year)) if indflytningsdag else gs_dage
+    if salg_overtagelsesdag:
+        if salg_overtagelsesdag.year < year:
+            raise ValueError(f"salg_overtagelsesdag {salg_overtagelsesdag} is before the income year {year}")
+        if overtagelsesdag and salg_overtagelsesdag <= overtagelsesdag:
+            raise ValueError(
+                f"salg_overtagelsesdag {salg_overtagelsesdag} is not after the overtagelsesdag {overtagelsesdag}"
+            )
+    if udflytningsdag:
+        if not salg_overtagelsesdag:
+            raise ValueError("udflytningsdag only applies when the home is sold (salg_overtagelsesdag)")
+        if udflytningsdag >= salg_overtagelsesdag:
+            raise ValueError(f"udflytningsdag {udflytningsdag} must be before the salg_overtagelsesdag")
+        start = indflytningsdag or overtagelsesdag
+        if start and udflytningsdag < start:
+            raise ValueError(f"udflytningsdag {udflytningsdag} is before the day the owner moved in ({start})")
+    # § 15, stk. 4 and § 18, stk. 2: the seller pays to and including the day before the
+    # buyer's overtagelsesdag; an earlier udflytningsdag ends the ejendomsværdiskat
+    gs_slut = salg_overtagelsesdag - timedelta(days=1) if salg_overtagelsesdag else None
+    gs_dage = _days_liable(overtagelsesdag, gs_slut, year)
+    evs_dage = min(gs_dage, _days_liable(indflytningsdag or overtagelsesdag, udflytningsdag or gs_slut, year))
     D = lambda x: Decimal(str(x))  # noqa: E731
     f = Figures(year)
     andel = f.rate("beskatningsgrundlag_ejendom_andel")

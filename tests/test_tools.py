@@ -249,3 +249,18 @@ async def test_estimate_share_income_tax_with_spouse():
     assert not result.is_error, result.content[0].text
     assert result.structured_content["person"]["skat"] == "63180.00"
     assert result.structured_content["spouse"]["skat"] == "5400.00"
+
+
+async def test_estimate_property_tax_sale_year():
+    """Sold, buyer takes over 6 May: the seller pays 125 of 360 days (LSF 113 2022/23, § 72)."""
+    result = await call(
+        "estimate_property_tax",
+        year=2026,
+        kommune="Aarhus",
+        ejendomsvaerdi=4_000_000,
+        grundvaerdi=1_000_000,
+        salg_overtagelsesdag="2026-05-06",
+    )
+    assert not result.is_error, result.content[0].text
+    tax = result.structured_content["tax"]
+    assert (tax["ejendomsvaerdiskat_dage"], tax["grundskyld_dage"]) == (125, 125)
