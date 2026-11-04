@@ -39,6 +39,7 @@ Amount = int | Decimal
 
 class SalaryTax(BaseModel):
     """Breakdown of the calculation. Kroner; taxes rounded to øre for display."""
+
     model_config = ConfigDict(use_attribute_docstrings=True)  # field docstrings -> outputSchema
 
     year: int
@@ -200,7 +201,12 @@ def _compute(
     # Shares are B-income: AM-bidrag (AMBL § 2, stk. 2), but outside the beskæftigelsesfradrag base.
     am_aktieloen = _kr(D(share_compensation) * f.rate("am_bidrag"))
     personlig = (
-        am_grundlag - am_bidrag + D(share_compensation) - am_aktieloen + D(other_personal_income) - D(private_ratepension)
+        am_grundlag
+        - am_bidrag
+        + D(share_compensation)
+        - am_aktieloen
+        + D(other_personal_income)
+        - D(private_ratepension)
     )
 
     # Ligningsmæssige fradrag
@@ -210,7 +216,9 @@ def _compute(
         min(_pos(besk_grundlag - f.value("jobfradrag_bundgraense")) * f.rate("jobfradrag"), f.value("jobfradrag_max"))
     )
     am_paa_pension = _kr((atp + pension) * f.rate("am_bidrag"))
-    ep_grundlag = min(atp + pension - am_paa_pension + D(private_ratepension), f.value("ekstra_pensionsfradrag_max_grundlag"))
+    ep_grundlag = min(
+        atp + pension - am_paa_pension + D(private_ratepension), f.value("ekstra_pensionsfradrag_max_grundlag")
+    )
     ep_rate = f.rate("ekstra_pensionsfradrag_15aar" if within_15_years_of_pension else "ekstra_pensionsfradrag")
     ekstra = _kr(ep_grundlag * ep_rate)
     ligningsmaessige = besk + job + ekstra + D(other_deductions)
@@ -235,7 +243,13 @@ def _compute(
         )
     else:
         mellemskat = _capped_bracket(
-            f, "mellemskat", "mellemskat_graense", "mellemskat_kapitalindkomst_bundfradrag", kommune, personlig, _pos(nki)
+            f,
+            "mellemskat",
+            "mellemskat_graense",
+            "mellemskat_kapitalindkomst_bundfradrag",
+            kommune,
+            personlig,
+            _pos(nki),
         )
         topskat = _pos(personlig - f.value("topskat_graense")) * f.rate("topskat")
         toptopskat = _pos(personlig - f.value("toptopskat_graense")) * f.rate("toptopskat")

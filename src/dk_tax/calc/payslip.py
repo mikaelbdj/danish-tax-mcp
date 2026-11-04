@@ -52,6 +52,7 @@ class MonthPayslip(BaseModel):
 
 class ShareVest(BaseModel):
     """One vest under withhold-to-cover: tax paid by keeping back shares, not from cash."""
+
     model_config = ConfigDict(use_attribute_docstrings=True)  # field docstrings -> outputSchema
 
     per_vest: Decimal
@@ -233,7 +234,9 @@ def estimate_payslip(
         rate = Decimal(traek) if share_withholding == "traekprocent" else D(share_withholding_rate)
         vest_am = am_rate * per_vest
         vest_skat = rate / 100 * (per_vest - vest_am)
-        share_vest = ShareVest(per_vest=per_vest, am_bidrag=vest_am, a_skat=vest_skat, net_value=per_vest - vest_am - vest_skat)
+        share_vest = ShareVest(
+            per_vest=per_vest, am_bidrag=vest_am, a_skat=vest_skat, net_value=per_vest - vest_am - vest_skat
+        )
         withheld += vests_per_year * (vest_am + vest_skat)
 
     sources = {**forskud.sources, **actual.sources, **figures.sources()}

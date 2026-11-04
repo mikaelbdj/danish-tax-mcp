@@ -103,8 +103,12 @@ def test_later_indflytning_moves_only_the_ejendomsvaerdiskat_start():
     ejendomsværdiskat; grundskyld still runs from the overtagelsesdag (§ 18, stk. 2).
     Indflytning 1 July: 180/360 x 16.320 = 8.160."""
     r = estimate_property_tax(
-        2026, 4_000_000, 1_000_000, grundskyldspromille=AARHUS,
-        overtagelsesdag=date(2026, 4, 1), indflytningsdag=date(2026, 7, 1),
+        2026,
+        4_000_000,
+        1_000_000,
+        grundskyldspromille=AARHUS,
+        overtagelsesdag=date(2026, 4, 1),
+        indflytningsdag=date(2026, 7, 1),
     )
     assert r.ejendomsvaerdiskat == Decimal("8160.00")
     assert r.grundskyld == Decimal("3600.00")
@@ -114,8 +118,12 @@ def test_cap_applies_to_the_full_year_then_the_part_year_reduction():
     """§ 45 compares yearly amounts; §§ 17-18 then reduce to the days owned.
     Capped 4.228 (see above) x 270/360 = 3.171."""
     r = estimate_property_tax(
-        2026, 4_000_000, 1_000_000, grundskyldspromille=AARHUS,
-        grundskyld_forrige_aar=4_000, overtagelsesdag=date(2026, 4, 1),
+        2026,
+        4_000_000,
+        1_000_000,
+        grundskyldspromille=AARHUS,
+        grundskyld_forrige_aar=4_000,
+        overtagelsesdag=date(2026, 4, 1),
     )
     assert r.grundskyld == Decimal("3171.00")
 
@@ -131,15 +139,23 @@ def test_inconsistent_dates_are_rejected():
         estimate_property_tax(2026, 4_000_000, 1_000_000, grundskyldspromille=AARHUS, overtagelsesdag=date(2027, 1, 1))
     with pytest.raises(ValueError, match="before the overtagelsesdag"):
         estimate_property_tax(
-            2026, 4_000_000, 1_000_000, grundskyldspromille=AARHUS,
-            overtagelsesdag=date(2026, 4, 1), indflytningsdag=date(2026, 3, 1),
+            2026,
+            4_000_000,
+            1_000_000,
+            grundskyldspromille=AARHUS,
+            overtagelsesdag=date(2026, 4, 1),
+            indflytningsdag=date(2026, 3, 1),
         )
 
 
 def test_indflytning_in_the_next_year_means_no_ejendomsvaerdiskat_this_year():
     r = estimate_property_tax(
-        2026, 4_000_000, 1_000_000, grundskyldspromille=AARHUS,
-        overtagelsesdag=date(2026, 11, 1), indflytningsdag=date(2027, 2, 1),
+        2026,
+        4_000_000,
+        1_000_000,
+        grundskyldspromille=AARHUS,
+        overtagelsesdag=date(2026, 11, 1),
+        indflytningsdag=date(2027, 2, 1),
     )
     assert r.ejendomsvaerdiskat_dage == 0
     assert r.ejendomsvaerdiskat == 0

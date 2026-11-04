@@ -44,6 +44,7 @@ Amount = int | Decimal
 
 class PropertyTax(BaseModel):
     """Ejendomsværdiskat and grundskyld for one year. Kroner, rounded to øre."""
+
     model_config = ConfigDict(use_attribute_docstrings=True)  # field docstrings -> outputSchema
 
     year: int

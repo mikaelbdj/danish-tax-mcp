@@ -34,7 +34,9 @@ def test_every_figure_is_well_formed(year):
 
 def test_permille_rate_is_a_fraction():
     # Property tax rates are printed in promille (5,1 promille); stored as printed.
-    f = Figure(name="x", value=Decimal("5.1"), unit="permille", source="s", verified=date(2026, 1, 1), status="verified")
+    f = Figure(
+        name="x", value=Decimal("5.1"), unit="permille", source="s", verified=date(2026, 1, 1), status="verified"
+    )
     assert f.rate() == Decimal("0.0051")
 
 
