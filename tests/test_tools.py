@@ -26,6 +26,7 @@ async def test_tool_surface():
         "estimate_salary_tax",
         "estimate_payslip",
         "estimate_property_tax",
+        "estimate_share_income_tax",
     }
     assert set(tools["get_figures"].input_schema["properties"]) == {"year", "keys"}
 
@@ -183,3 +184,25 @@ async def test_estimate_property_tax_purchase_year():
     tax = result.structured_content["tax"]
     assert (tax["ejendomsvaerdiskat"], tax["grundskyld"]) == ("12240.00", "3600.00")
     assert tax["ejendomsvaerdiskat_dage"] == 270
+
+
+async def test_estimate_share_income_tax_tool():
+    """JV C.E.3.2.4.1.2, eksempel 3 over the protocol: -150.000 kr. gives 51.090 negative tax."""
+    result = await call("estimate_share_income_tax", year=2026, oevrig_aktieindkomst=-150_000, oevrig_slutskat=30_000)
+    assert not result.is_error
+    tax = result.structured_content
+    assert tax["negativ_skat"] == "51090.00"
+    assert tax["negativ_skat_fremfoert_naeste_aar"] == "21090.00"
+    assert tax["sources"]["aktieindkomst_progressionsgraense"]["status"] == "verified"
+
+
+async def test_estimate_share_income_tax_rejects_negative_loss():
+    result = await call("estimate_share_income_tax", year=2026, boersnoteret_tab=-5_000)
+    assert result.is_error
+    assert "positive amounts" in result.content[0].text
+
+
+async def test_estimate_share_income_tax_unknown_year():
+    result = await call("estimate_share_income_tax", year=1999, boersnoteret_udbytte_gevinst=1_000)
+    assert result.is_error
+    assert "1999" in result.content[0].text

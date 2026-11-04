@@ -15,6 +15,8 @@ from dk_tax.calc.property import PropertyTax
 from dk_tax.calc.property import estimate_property_tax as _property
 from dk_tax.calc.salary import SalaryTax
 from dk_tax.calc.salary import estimate_salary_tax as _estimate
+from dk_tax.calc.shares import ShareIncomeTax
+from dk_tax.calc.shares import estimate_share_income_tax as _shares
 from dk_tax.loader import Figure, Kommune, Status, load_kommuner, load_year, slug
 
 server = MCPServer(
@@ -322,3 +324,54 @@ def estimate_property_tax(
     except (LookupError, ValueError) as e:
         raise ToolError(str(e)) from e
     return PropertyTaxResult(tax=tax, kommune=kommune_result)
+
+
+@server.tool()
+def estimate_share_income_tax(
+    year: int,
+    boersnoteret_udbytte_gevinst: int = 0,
+    boersnoteret_tab: int = 0,
+    boersnoteret_tab_fremfoert: int = 0,
+    oevrig_aktieindkomst: int = 0,
+    udbytteskat_indeholdt: int = 0,
+    negativ_skat_fremfoert: int = 0,
+    oevrig_slutskat: int | None = None,
+) -> ShareIncomeTax:
+    """Estimate skat af aktieindkomst (27 % / 42 %) for one person for one income year.
+
+    Aktieindkomst is share dividends and gains and losses on shares, taxed apart from salary
+    (no personfradrag, brackets or skatteloft). RSU vesting is salary (estimate_salary_tax);
+    selling the vested shares later, or their dividends, is aktieindkomst. Aktiesparekonto
+    is a separate 17 % scheme and does not belong here.
+    boersnoteret_udbytte_gevinst / boersnoteret_tab: the year's dividends plus gains, and
+      losses (as a positive amount), on listed shares and listed funds taxed as aktieindkomst.
+      A listed loss only offsets listed income; the rest is carried forward as a loss
+      (boersnoteret_tab_fremfoert_naeste_aar) and never gives negative tax.
+    boersnoteret_tab_fremfoert: unused listed-share losses from earlier years (årsopgørelse).
+    oevrig_aktieindkomst: unlisted shares: dividends plus gains minus losses; may be negative.
+      Negative aktieindkomst gives a negative tax credited against the other tax.
+    udbytteskat_indeholdt: Danish udbytteskat withheld (27 %), not foreign withholding tax.
+    negativ_skat_fremfoert: unused negative share tax from earlier years.
+    oevrig_slutskat: the year's other tax, e.g. skat_i_alt from estimate_salary_tax, which
+      negative tax is credited against. Without it slutskat_ukendt is true and all negative
+      tax is assumed usable: say so.
+    netto is what shares add to (or, if negative, take off) the year's tax.
+    Ask whether the shares are listed: the loss rules differ. Married couples are not
+    handled yet: the grænse can be shared and listed losses must move to the spouse.
+    Foreign withholding tax relief (e.g. US dividends) is not handled.
+    Cite the sources with the income year and flag any figure that is not 'verified'.
+    Not tax advice.
+    """
+    try:
+        return _shares(
+            year,
+            boersnoteret_udbytte_gevinst=boersnoteret_udbytte_gevinst,
+            boersnoteret_tab=boersnoteret_tab,
+            boersnoteret_tab_fremfoert=boersnoteret_tab_fremfoert,
+            oevrig_aktieindkomst=oevrig_aktieindkomst,
+            udbytteskat_indeholdt=udbytteskat_indeholdt,
+            negativ_skat_fremfoert=negativ_skat_fremfoert,
+            oevrig_slutskat=oevrig_slutskat,
+        )
+    except (LookupError, ValueError) as e:
+        raise ToolError(str(e)) from e

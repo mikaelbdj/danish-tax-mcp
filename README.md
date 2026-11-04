@@ -26,6 +26,7 @@ Other MCP clients can run the same command over stdio.
 | `estimate_salary_tax(...)` | Income tax for an unmarried employee, with take-home pay and marginal rate |
 | `estimate_payslip(...)` | Trækprocent and månedsfradrag from a forskudsopgørelse, monthly payout, share vests and expected restskat (2026 onwards) |
 | `estimate_property_tax(...)` | Ejendomsværdiskat and grundskyld for an owner-occupied home, including the year it is bought, with the cap on grundskyld increases (2026 onwards). Enter the valuation for the year before the income year: the 2026 tax uses the 2025 ejendomsværdi and grundværdi |
+| `estimate_share_income_tax(...)` | Skat af aktieindkomst for one person (27 % and 42 %), with withheld udbytteskat, losses on listed and unlisted shares, and amounts carried forward |
 
 Example questions:
 
@@ -33,20 +34,22 @@ Example questions:
 - How much tax do I pay on 900.000 kr. in Aarhus?
 - What happens to my trækprocent if I put my bonus and RSUs in the forskudsopgørelse?
 - Hvad bliver ejendomsværdiskatten på en lejlighed vurderet til 4 mio. kr. i Aarhus?
+- How much tax do I pay if I sell shares with a gain of 120.000 kr.?
 
 ## Coverage
 
 Income years 2025 to 2027, and all 98 kommuner. 2023 is included only because the
-official worked example is from that year. Married couples, aktieindkomst, the
-positivliste, and selling a home during the year are not covered yet.
+official worked example is from that year. Married couples, the positivliste, foreign
+withholding tax on dividends, and selling a home during the year are not covered yet.
 
 ## Testing
 
 The salary calculator reproduces svmn.dk's worked example for 2023 to the øre, and the
 skatteloft reduction matches svmn.dk's table for every kommune in 2025 to 2027. The
 skattekort formulas reproduce SKAT's examples. Where the law doesn't settle something
-(mostly rounding), the assumption is written down in the docstring of `calc/salary.py`
-or `calc/payslip.py`.
+(mostly rounding), the assumption is written down in the module docstring in `calc/`.
+The aktieindkomst split is checked against the 2026 examples in Den juridiske vejledning
+(C.E.3.2.4.1.2).
 
 ```sh
 uv run pytest
