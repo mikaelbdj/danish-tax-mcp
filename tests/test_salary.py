@@ -132,3 +132,37 @@ def test_2026_capital_income_counts_in_mellemskat_only():
     assert with_capital.topskat == without.topskat
     assert with_capital.toptopskat == without.toptopskat
     assert with_capital.mellemskat > without.mellemskat
+
+
+# --- Credits that exceed a tax (PSL §§ 9, 11, 12, 13) -----------------------------------
+# Hand calculations from the law text (no official example found). Kommuneskat 25 %, no
+# kirkeskat; income without AM-bidrag (other_personal_income) to keep the numbers short.
+# 2026: personfradrag 54.100, bundskat 12,01 %.
+
+
+def test_unused_kommune_personfradrag_reduces_bundskat_and_tax_never_goes_negative():
+    """Personlig indkomst 60.000, nettokapitalindkomst -40.000, skattepligtig 20.000.
+    Kommuneskat 25 % x 20.000 = 5.000; skatteværdi 25 % x 54.100 = 13.525: 8.525 unused.
+    Bundskat 12,01 % x 60.000 = 7.206 - 12,01 % x 54.100 = 6.497,41 -> 708,59.
+    § 12, stk. 2: the unused 8.525 reduces bundskat to 0; 7.816,41 stays unused.
+    § 11 nedslag 8 % x 40.000 = 3.200 finds no tax left: unused, not a negative tax."""
+    r = estimate_salary_tax(2026, 0, kommuneskat=25, other_personal_income=60_000, net_capital_income=-40_000)
+    assert r.kommune_og_kirkeskat == 0
+    assert r.bundskat == 0
+    assert r.kompensation == 0
+    assert r.indkomstskat == 0
+    assert r.uudnyttet_personfradrag_vaerdi == Decimal("7816.41")
+    assert r.uudnyttet_kompensation == Decimal("3200.00")
+
+
+def test_underskud_reduces_state_taxes_before_personfradrag():
+    """Personlig 100.000, nettokapitalindkomst -150.000: skattepligtig -50.000 (underskud).
+    § 13, stk. 1: skatteværdi 25 % x 50.000 = 12.500 against bundskat 12,01 % x 100.000 =
+    12.010 -> 0; 490 left = 1.960 kr. underskud carried forward. § 9: personfradrag comes
+    after § 13, so all of its value (13.525 + 6.497,41) is unused; nedslag 4.000 unused."""
+    r = estimate_salary_tax(2026, 0, kommuneskat=25, other_personal_income=100_000, net_capital_income=-150_000)
+    assert r.skattepligtig_indkomst == -50_000
+    assert r.indkomstskat == 0
+    assert r.underskud_til_fremfoersel == Decimal("1960.00")
+    assert r.uudnyttet_personfradrag_vaerdi == Decimal("20022.41")
+    assert r.uudnyttet_kompensation == Decimal("4000.00")

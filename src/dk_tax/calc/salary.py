@@ -7,8 +7,11 @@ Rules, with sources (see also tests/test_salary.py):
 - Personlig indkomst: PSL § 3. Skattepligtig indkomst: PSL §§ 1-2.
 - Beskæftigelsesfradrag, jobfradrag, ekstra pensionsfradrag: LL §§ 9 J, 9 K, 9 L.
   Ligningsmæssige fradrag, so they reduce only the kommune/kirke base.
-- Personfradrag applied as a tax value per tax: PSL §§ 9-12.
-- Kompensation for negative nettokapitalindkomst: PSL § 11.
+- Credits, each reducing taxes to at most 0: an underskud (negative skattepligtig
+  indkomst) at the kommune + kirke rate against the state taxes (PSL § 13, stk. 1); then the
+  skatteværdi of personfradrag against its own tax, the bundskat value on down the state
+  brackets (§ 9), and what is left against the other taxes (§ 12, stk. 2); then the
+  nedslag for negative nettokapitalindkomst (§ 11). Unused amounts are reported.
 - Brackets: up to 2025 topskat 15 % (old PSL § 7); from 2026 mellemskat, topskat
   and toptopskat (PSL §§ 7, 7 a, 8 as amended by lov nr. 482 af 22/05/2024).
 - Skatteloft: PSL § 19. Kommuneskat + bundskat + the capped bracket (topskat up
@@ -21,8 +24,9 @@ Assumptions (the law does not settle these; we follow svmn.dk's official
   exact and the total is rounded to øre once.
 - ATP (own + employer) counts in the ekstra pensionsfradrag base, less AM-bidrag.
 
-Not covered: married couples (transfers between spouses), unused personfradrag
-carried to other taxes, aktieindkomst, ejendomsværdiskat, under-18 and senior rules.
+Not covered: married couples (transfers between spouses), negative personlig indkomst
+(§ 13, stk. 3), underskud carried forward from earlier years, aktieindkomst,
+ejendomsværdiskat, under-18 and senior rules.
 """
 
 from decimal import ROUND_HALF_UP, Decimal
@@ -60,6 +64,15 @@ class SalaryTax(BaseModel):
     topskat: Decimal
     toptopskat: Decimal
     indkomstskat: Decimal
+    uudnyttet_personfradrag_vaerdi: Decimal = Decimal(0)
+    """Skatteværdi of personfradrag left after all own taxes (PSL §§ 9, 12). Lost for a single
+    person; a spouse living with them at year end can use it (§ 10, stk. 2)."""
+    uudnyttet_kompensation: Decimal = Decimal(0)
+    """§ 11 nedslag for negative nettokapitalindkomst left after all own taxes. Lost for a
+    single person; goes to a spouse (§ 11, stk. 4)."""
+    underskud_til_fremfoersel: Decimal = Decimal(0)
+    """Negative skattepligtig indkomst not used against this year's state taxes (§ 13, stk. 1);
+    carried forward to next year's skattepligtig indkomst."""
     skat_i_alt: Decimal
     """indkomstskat + AM-bidrag on salary and shares (AM-bidrag on pension is paid from the pension)."""
     til_udbetaling: Decimal
@@ -84,6 +97,18 @@ def _ore(x: Decimal) -> Decimal:
 
 def _pos(x: Decimal) -> Decimal:
     return max(Decimal(0), x)
+
+
+STATE_TAXES = ["bundskat", "mellemskat", "topskat", "toptopskat"]  # order of PSL §§ 9 and 13
+
+
+def _credit(taxes: dict[str, Decimal], amount: Decimal, order: list[str]) -> Decimal:
+    """Reduce taxes in order by amount, none below 0. Returns what could not be used."""
+    for key in order:
+        used = min(amount, taxes[key])
+        taxes[key] -= used
+        amount -= used
+    return amount
 
 
 def _capped_bracket(
@@ -224,15 +249,11 @@ def _compute(
     ligningsmaessige = besk + job + ekstra + D(other_deductions)
     skattepligtig = personlig + nki - ligningsmaessige
 
-    # Kommune- og kirkeskat, bundskat, kompensation
-    personfradrag = f.value("personfradrag")
+    # Taxes before credits
     kk_rate = (kommune + kirke) / 100
-    kommune_kirke = _pos(skattepligtig * kk_rate - personfradrag * kk_rate)
     bund_rate = f.rate("bundskat")
-    bundskat = _pos((personlig + _pos(nki)) * bund_rate - personfradrag * bund_rate)
-    kompensation = min(_pos(-nki), f.value("negativ_kapitalindkomst_kompensation_graense")) * f.rate(
-        "negativ_kapitalindkomst_kompensation"
-    )
+    kommune_kirke = _pos(skattepligtig) * kk_rate
+    bundskat = _pos(personlig + _pos(nki)) * bund_rate
 
     # Brackets
     zero = Decimal(0)
@@ -254,7 +275,36 @@ def _compute(
         topskat = _pos(personlig - f.value("topskat_graense")) * f.rate("topskat")
         toptopskat = _pos(personlig - f.value("toptopskat_graense")) * f.rate("toptopskat")
 
-    indkomstskat = kommune_kirke - kompensation + bundskat + mellemskat + topskat + toptopskat
+    # Credits, in the order of PSL §§ 13, 9, 12 and 11. Each reduces taxes to at most 0.
+    taxes = {
+        "kommune_kirke": kommune_kirke,
+        "bundskat": bundskat,
+        "mellemskat": mellemskat,
+        "topskat": topskat,
+        "toptopskat": toptopskat,
+    }
+    # § 13, stk. 1: an underskud, valued at the kommune + kirke rate, reduces the state taxes
+    underskud_rest = _credit(taxes, _pos(-skattepligtig) * kk_rate, STATE_TAXES)
+    underskud_fremfoert = underskud_rest / kk_rate if kk_rate else _pos(-skattepligtig)
+    # § 9: skatteværdi of personfradrag against its own tax (bundskat value then down the
+    # state brackets); § 12, stk. 2: what is left reduces the other taxes
+    personfradrag = f.value("personfradrag")
+    kommune_rest = _credit(taxes, personfradrag * kk_rate, ["kommune_kirke"])
+    bund_rest = _credit(taxes, personfradrag * bund_rate, STATE_TAXES)
+    kommune_rest = _credit(taxes, kommune_rest, STATE_TAXES)
+    bund_rest = _credit(taxes, bund_rest, ["kommune_kirke"])
+    # The tax lines are shown after personfradrag and before the § 11 nedslag, which is its
+    # own line (kompensation), as in svmn.dk's worked example.
+    kommune_kirke, bundskat = taxes["kommune_kirke"], taxes["bundskat"]
+    mellemskat, topskat, toptopskat = taxes["mellemskat"], taxes["topskat"], taxes["toptopskat"]
+    # § 11: nedslag for negative nettokapitalindkomst, in the order of § 11, stk. 1
+    nedslag = min(_pos(-nki), f.value("negativ_kapitalindkomst_kompensation_graense")) * f.rate(
+        "negativ_kapitalindkomst_kompensation"
+    )
+    nedslag_rest = _credit(taxes, nedslag, [*STATE_TAXES, "kommune_kirke"])
+    kompensation = nedslag - nedslag_rest
+
+    indkomstskat = sum(taxes.values(), Decimal(0))
     skat_i_alt = _ore(indkomstskat + am_bidrag + am_aktieloen)
     gross = D(gross_salary)
     return SalaryTax(
@@ -275,6 +325,9 @@ def _compute(
         topskat=_ore(topskat),
         toptopskat=_ore(toptopskat),
         indkomstskat=_ore(indkomstskat),
+        uudnyttet_personfradrag_vaerdi=_ore(kommune_rest + bund_rest),
+        uudnyttet_kompensation=_ore(nedslag_rest),
+        underskud_til_fremfoersel=_ore(underskud_fremfoert),
         skat_i_alt=skat_i_alt,
         til_udbetaling=_ore(gross - D(pension_own) - D(atp_own) - skat_i_alt),
         effektiv_skatteprocent=_ore(skat_i_alt / (gross + D(share_compensation)) * 100) if gross else Decimal(0),
