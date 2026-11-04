@@ -78,7 +78,7 @@ async def test_estimate_salary_tax_tool_matches_calculator():
 
 
 async def test_estimate_salary_tax_church_member_pays_kirkeskat():
-    args = dict(year=2026, gross_salary=900_000, kommune="Aarhus", atp_full_time=False)
+    args = {"year": 2026, "gross_salary": 900_000, "kommune": "Aarhus", "atp_full_time": False}
     without = await call("estimate_salary_tax", folkekirke_member=False, **args)
     with_ = await call("estimate_salary_tax", folkekirke_member=True, **args)
     diff = Decimal(with_.structured_content["tax"]["indkomstskat"]) - Decimal(without.structured_content["tax"]["indkomstskat"])

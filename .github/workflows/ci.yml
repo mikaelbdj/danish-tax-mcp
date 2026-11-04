@@ -16,6 +16,9 @@ jobs:
           python-version: "3.12"
       - run: pip install uv
       # --locked: fail if uv.lock is out of date with pyproject.toml instead of re-locking.
+      # ruff is pinned in the dev group, so CI and local runs use the same rules.
+      - run: uv run --locked ruff check .
+      - run: uv run --locked ruff format --check .
       - run: uv run --locked pytest
       - run: uv build
       # Tests run against src/; this checks the wheel users install (package data included).

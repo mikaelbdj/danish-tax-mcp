@@ -125,7 +125,7 @@ def test_2026_capital_income_counts_in_mellemskat_only():
     mellemskat (PSL § 7, stk. 1) is on personlig indkomst plus positive nettokapitalindkomst
     above its grundbeløb; topskat (§ 7 a) and toptopskat (§ 8) are on personlig indkomst only.
     Salary high enough for all three brackets."""
-    args = dict(kommuneskat=Decimal("24.52"))
+    args = {"kommuneskat": Decimal("24.52")}
     without = estimate_salary_tax(2026, 3_000_000, **args)
     with_capital = estimate_salary_tax(2026, 3_000_000, net_capital_income=200_000, **args)
     assert without.toptopskat > 0

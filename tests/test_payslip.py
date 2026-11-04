@@ -59,7 +59,7 @@ def test_normal_month_payslip_lines_add_up():
 
 
 def test_bonus_left_out_of_forskud_gives_more_restskat():
-    args = dict(kommuneskat=AARHUS, pension_own_pct=4, pension_employer_pct=8, bonus=120_000)
+    args = {"kommuneskat": AARHUS, "pension_own_pct": 4, "pension_employer_pct": 8, "bonus": 120_000}
     included = estimate_payslip(2026, 60_000, include_bonus_in_forskud=True, **args)
     left_out = estimate_payslip(2026, 60_000, include_bonus_in_forskud=False, **args)
     assert left_out.traekprocent <= included.traekprocent
@@ -70,7 +70,7 @@ def test_bonus_left_out_of_forskud_gives_more_restskat():
 def test_shares_in_forskud_lower_normal_pay_and_avoid_restskat():
     """RSUs are B-income (no employer withholding). In the forskudsopgørelse they raise the
     forskudsskat, which shrinks the fradrag (KSL-bekendtgørelsen § 9) and lowers normal pay."""
-    args = dict(kommuneskat=AARHUS, pension_own_pct=4, pension_employer_pct=8, share_compensation=200_000)
+    args = {"kommuneskat": AARHUS, "pension_own_pct": 4, "pension_employer_pct": 8, "share_compensation": 200_000}
     included = estimate_payslip(2026, 60_000, include_shares_in_forskud=True, **args)
     left_out = estimate_payslip(2026, 60_000, include_shares_in_forskud=False, **args)
     assert included.maanedsfradrag < left_out.maanedsfradrag
@@ -94,7 +94,7 @@ def test_withhold_to_cover_shares_barely_touch_normal_pay():
     shares in the forskudsopgørelse, § 9 backs the fradrag out so that the year's withholding
     equals the year's tax: the marginal tax on the shares shows up as a smaller fradrag on
     the salary, and only the rounding-up over-withholding remains."""
-    args = dict(kommuneskat=AARHUS, pension_own_pct=4, pension_employer_pct=8, share_compensation=200_000)
+    args = {"kommuneskat": AARHUS, "pension_own_pct": 4, "pension_employer_pct": 8, "share_compensation": 200_000}
     b_income = estimate_payslip(2026, 60_000, **args)  # share_withholding="none"
     cover = estimate_payslip(2026, 60_000, share_withholding="traekprocent", **args)
     no_shares = estimate_payslip(2026, 60_000, kommuneskat=AARHUS, pension_own_pct=4, pension_employer_pct=8)
@@ -115,7 +115,7 @@ def test_withhold_to_cover_shares_barely_touch_normal_pay():
 
 
 def test_withhold_to_cover_at_a_fixed_high_rate_leaves_less_restskat():
-    args = dict(kommuneskat=AARHUS, pension_own_pct=4, pension_employer_pct=8, share_compensation=200_000)
+    args = {"kommuneskat": AARHUS, "pension_own_pct": 4, "pension_employer_pct": 8, "share_compensation": 200_000}
     at_traek = estimate_payslip(2026, 60_000, share_withholding="traekprocent", **args)
     at_56 = estimate_payslip(2026, 60_000, share_withholding="fixed", share_withholding_rate=56, **args)
     assert at_56.year_end.restskat < at_traek.year_end.restskat
@@ -129,7 +129,7 @@ def test_fixed_withholding_needs_a_rate():
 def test_quarterly_bonus_same_year_total_as_one_payment():
     """A bonus split over 4 payments: each bonus month gets a quarter, and since every month's
     fradrag is used by the salary, the year's withholding is unchanged."""
-    args = dict(kommuneskat=AARHUS, pension_own_pct=4, pension_employer_pct=8, bonus=125_000)
+    args = {"kommuneskat": AARHUS, "pension_own_pct": 4, "pension_employer_pct": 8, "bonus": 125_000}
     once = estimate_payslip(2026, 80_000, **args)
     quarterly = estimate_payslip(2026, 80_000, bonus_payments=4, **args)
     assert quarterly.bonus_month.gross == 80_000 + Decimal(125_000) / 4

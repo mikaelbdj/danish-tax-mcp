@@ -36,7 +36,16 @@ build-backend = "uv_build"
 dev = [
     "openpyxl>=3.1.5",
     "pytest>=9.2.0",
+    "ruff==0.17.3",
 ]
 
 [tool.uv.build-backend]
 module-name = "dk_tax"
+
+[tool.ruff]
+line-length = 120
+
+[tool.ruff.lint]
+# An explicit list, so a ruff upgrade never changes the rules: pycodestyle errors, pyflakes,
+# import order, bugbear, pyupgrade, and comprehensions ({} over dict()).
+select = ["E", "F", "I", "B", "UP", "C4"]

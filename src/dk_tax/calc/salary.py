@@ -145,21 +145,21 @@ def estimate_salary_tax(
     atp_full_time: use the statutory full-time ATP amounts instead of atp_own/atp_employer.
     other_deductions: other ligningsmæssige fradrag (befordring, union dues, ...).
     """
-    args = dict(
-        kommuneskat=kommuneskat,
-        kirkeskat=kirkeskat,
-        atp_full_time=atp_full_time,
-        atp_own=atp_own,
-        atp_employer=atp_employer,
-        pension_own=pension_own,
-        pension_employer=pension_employer,
-        private_ratepension=private_ratepension,
-        other_personal_income=other_personal_income,
-        share_compensation=share_compensation,
-        net_capital_income=net_capital_income,
-        other_deductions=other_deductions,
-        within_15_years_of_pension=within_15_years_of_pension,
-    )
+    args = {
+        "kommuneskat": kommuneskat,
+        "kirkeskat": kirkeskat,
+        "atp_full_time": atp_full_time,
+        "atp_own": atp_own,
+        "atp_employer": atp_employer,
+        "pension_own": pension_own,
+        "pension_employer": pension_employer,
+        "private_ratepension": private_ratepension,
+        "other_personal_income": other_personal_income,
+        "share_compensation": share_compensation,
+        "net_capital_income": net_capital_income,
+        "other_deductions": other_deductions,
+        "within_15_years_of_pension": within_15_years_of_pension,
+    }
     result = _compute(year, gross_salary, **args)
     next_step = _compute(year, Decimal(str(gross_salary)) + MARGINAL_STEP, **args)
     marginal = (next_step.skat_i_alt - result.skat_i_alt) / MARGINAL_STEP * 100

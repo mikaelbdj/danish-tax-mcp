@@ -21,7 +21,7 @@ Figures for a year are usually published the autumn before. From November,
 1. Copy the latest file in `src/dk_tax/figures/` and rename it to the new year.
 2. Update the values from svmn.dk's "Satser og beløbsgrænser i lovgivningen" (the pages for
    personskatteloven, ligningsloven, pensionsbeskatningsloven, aktiesparekontoloven,
-   arbejdsmarkedsbidragsloven and pensionsafkastbeskatningsloven).
+   arbejdsmarkedsbidragsloven, pensionsafkastbeskatningsloven and ejendomsskatteloven).
 3. If brackets were added or removed, update `calc/salary.py` and `calc/payslip.py` and
    branch on the year, as `REFORM_YEAR` does for 2026.
 4. Generate the kommune table from Skatteministeriet's Excel file (linked from
@@ -33,3 +33,16 @@ Figures for a year are usually published the autumn before. From November,
 
 5. Add a few of the new values to `test_pinned_values` in `tests/test_data.py` and run
    `uv run pytest`.
+
+## Checks
+
+CI runs these on every push. Run them before you open a pull request:
+
+```sh
+uv run ruff check .
+uv run ruff format .
+uv run pytest
+```
+
+The lint rules are listed in `pyproject.toml`, and ruff is pinned in the dev group so
+everyone gets the same results.
