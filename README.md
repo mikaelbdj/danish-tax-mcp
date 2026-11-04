@@ -12,10 +12,11 @@ from Skattestyrelsen.
 You need [uv](https://docs.astral.sh/uv/). For Claude Code:
 
 ```sh
-claude mcp add dk-tax -- uvx --from git+https://github.com/mikaelbdj/danish-tax-mcp@v0.1.0 dk-tax
+claude mcp add dk-tax -- uvx danish-tax-mcp
 ```
 
-Other MCP clients can run the same command over stdio.
+Other MCP clients can run the same command over stdio. To pin a version, use
+`uvx danish-tax-mcp@0.4.0`.
 
 ## Tools
 

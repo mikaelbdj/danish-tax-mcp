@@ -331,3 +331,10 @@ async def test_estimate_payslip_with_spouse():
     assert Decimal(m["overfoert_fra_aegtefaelle"]) > 0
     assert Decimal(m["fradrag_aar"]) > Decimal(s["fradrag_aar"])
     assert m["traekprocent"] == s["traekprocent"]
+
+
+async def test_server_reports_the_package_version():
+    from importlib.metadata import version
+
+    async with Client(server) as client:
+        assert client.server_info.version == version("danish-tax-mcp")

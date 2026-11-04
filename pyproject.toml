@@ -1,6 +1,6 @@
 [project]
 name = "danish-tax-mcp"
-version = "0.3.2"
+version = "0.4.0"
 description = "Danish personal tax figures and calculators, exposed as an MCP server"
 readme = "README.md"
 authors = [
@@ -11,8 +11,10 @@ license = "MIT"
 license-files = ["LICENSE"]
 keywords = ["mcp", "denmark", "tax", "skat", "forskudsopgørelse", "trækprocent"]
 classifiers = [
+    "Development Status :: 4 - Beta",
     "Natural Language :: Danish",
     "Natural Language :: English",
+    "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
     "Topic :: Office/Business :: Financial :: Accounting",
 ]
@@ -25,9 +27,11 @@ dependencies = [
 
 [project.scripts]
 dk-tax = "dk_tax:main"
+danish-tax-mcp = "dk_tax:main"  # so `uvx danish-tax-mcp` works
 
 [project.urls]
 Repository = "https://github.com/mikaelbdj/danish-tax-mcp"
+Issues = "https://github.com/mikaelbdj/danish-tax-mcp/issues"
 
 [build-system]
 requires = ["uv_build>=0.12.21,<0.13.0"]

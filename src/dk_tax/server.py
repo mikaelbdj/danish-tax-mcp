@@ -3,6 +3,8 @@
 from collections.abc import Mapping
 from datetime import date
 from difflib import get_close_matches
+from importlib.metadata import PackageNotFoundError
+from importlib.metadata import version as _version
 from typing import Literal
 
 from mcp.server import MCPServer
@@ -23,8 +25,14 @@ from dk_tax.calc.shares import estimate_couple_share_income_tax as _couple_share
 from dk_tax.calc.shares import estimate_share_income_tax as _shares
 from dk_tax.loader import Figure, Kommune, Status, load_kommuner, load_year, slug
 
+try:
+    VERSION = _version("danish-tax-mcp")
+except PackageNotFoundError:  # running from a source tree that is not installed
+    VERSION = ""
+
 server = MCPServer(
     "dk-tax",
+    version=VERSION,
     instructions=(
         "Danish personal tax figures (rates, thresholds, deductions) per income year, "
         "each with its official source. Never state a Danish tax figure from memory: "

@@ -1,0 +1,42 @@
+name: Release
+
+# Publishes to PyPI when a version tag (v1.2.3) is pushed. Uses trusted publishing: PyPI
+# accepts a short-lived token that GitHub issues to this workflow, so no secret is stored.
+# Set up once on pypi.org (publisher: this repository, workflow release.yml, environment pypi).
+
+on:
+  push:
+    tags: ["v*"]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install uv
+      - name: Check that the tag matches the version in pyproject.toml
+        run: test "v$(uv version --short)" = "$GITHUB_REF_NAME"
+      - run: uv run --locked ruff check .
+      - run: uv run --locked pytest
+      - run: uv build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      id-token: write  # for trusted publishing
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+      - run: pip install uv
+      - run: uv publish --trusted-publishing always
