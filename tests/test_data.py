@@ -96,3 +96,5 @@ def test_loaded_figures_are_read_only():
     # load_year is cached and shared by every caller; a change would leak into later calls.
     with pytest.raises(TypeError):
         load_year(2026)["bundskat"] = None
+    with pytest.raises(TypeError):
+        load_kommuner(2026).kommuner["aarhus"] = None

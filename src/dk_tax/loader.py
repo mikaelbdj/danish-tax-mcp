@@ -12,7 +12,7 @@ from types import MappingProxyType
 from typing import Literal
 
 import yaml
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, field_validator
 
 Status = Literal["verified", "secondary", "unverified", "proposed"]
 
@@ -61,7 +61,13 @@ class KommuneTable(BaseModel):
     source: str
     verified: date
     status: Status
-    kommuner: dict[str, Kommune]
+    kommuner: Mapping[str, Kommune]
+
+    @field_validator("kommuner", mode="after")
+    @classmethod
+    def _read_only(cls, v: Mapping[str, Kommune]) -> Mapping[str, Kommune]:
+        # frozen stops reassigning the field, not changing the dict; load_kommuner is cached
+        return MappingProxyType(dict(v))
 
 
 def slug(name: str) -> str:
