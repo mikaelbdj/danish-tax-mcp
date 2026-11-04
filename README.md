@@ -1,7 +1,8 @@
 # danish-tax-mcp
 
 MCP server for Danish personal income tax. It has the yearly rates and thresholds, each
-with the official source it came from, and calculators for income tax and the skattekort.
+with the official source it came from, calculators for income tax, the skattekort, share
+income and property tax, and lookups in SKAT's positivliste and Den juridiske vejledning.
 
 The results are estimates for planning. What you actually owe is set by your årsopgørelse
 from Skattestyrelsen.
@@ -28,6 +29,11 @@ Other MCP clients can run the same command over stdio.
 | `estimate_payslip(...)` | Trækprocent and månedsfradrag from a forskudsopgørelse, monthly payout, share vests and expected restskat (2026 onwards) |
 | `estimate_property_tax(...)` | Ejendomsværdiskat and grundskyld for an owner-occupied home, including the years it is bought and sold, with the cap on grundskyld increases (2026 onwards). Enter the valuation for the year before the income year: the 2026 tax uses the 2025 ejendomsværdi and grundværdi |
 | `estimate_share_income_tax(...)` | Skat af aktieindkomst (27 % and 42 %) for one person or a married couple, with withheld udbytteskat, losses on listed and unlisted shares, and amounts carried forward |
+| `lookup_abis(query, year)` | Whether a fund is on SKAT's list of aktiebaserede investeringsselskaber for a year, read live from skat.dk |
+| `get_jv_section(section)` | The current text of a section of Den juridiske vejledning, read live from info.skat.dk |
+
+The two lookups fetch public pages from skat.dk and info.skat.dk and cache them in
+`~/.cache/dk-tax`. Your query is matched locally and is not sent anywhere.
 
 Example questions:
 
@@ -37,12 +43,13 @@ Example questions:
 - Hvad bliver ejendomsværdiskatten på en lejlighed vurderet til 4 mio. kr. i Aarhus?
 - How much tax do I pay if I sell shares with a gain of 120.000 kr.?
 - My spouse is on unpaid parental leave. How much of their personfradrag can I use?
+- Is IE00B4L5Y983 on the positivliste, and how is it taxed?
 
 ## Coverage
 
 Income years 2025 to 2027, and all 98 kommuner. 2023 is included only because the
-official worked example is from that year. The positivliste, foreign withholding tax on
-dividends, business income and the skattekort for couples are not covered yet.
+official worked example is from that year. Foreign withholding tax on dividends,
+business income and the skattekort for couples are not covered yet.
 
 ## Testing
 

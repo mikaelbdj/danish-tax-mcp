@@ -9,6 +9,7 @@ from mcp.server import MCPServer
 from mcp.server.mcpserver.exceptions import ToolError
 from pydantic import BaseModel, ConfigDict
 
+from dk_tax import abis, jv
 from dk_tax.calc.couple import CoupleTax
 from dk_tax.calc.couple import estimate_couple_tax as _couple
 from dk_tax.calc.payslip import Payslip
@@ -485,3 +486,46 @@ def estimate_share_income_tax(
         return ShareIncomeTaxResult(person=a, spouse=b)
     except (LookupError, ValueError) as e:
         raise ToolError(str(e)) from e
+
+
+@server.tool()
+def lookup_abis(query: str, year: int) -> abis.AbisResult:
+    """Check SKAT's positivliste (ABIS list) of aktiebaserede investeringsselskaber.
+
+    query: an ISIN (exact, e.g. IE00B4L5Y983) or part of a fund name. year: income year.
+    For an ISIN, on_list tells whether the fund is registered as aktiebaseret for that
+    year. Meaning, for an investeringsselskab (ABL § 19, e.g. most foreign ETFs): on the
+    list, gains and dividends are aktieindkomst taxed yearly on the change in value (ABL
+    § 19 B, lagerbeskatning) and the fund may be held on an aktiesparekonto; not on the
+    list, it is taxed as kapitalindkomst, also lagerbeskattet. The list does not cover
+    ordinary shares or Danish investeringsforeninger with minimumsbeskatning (ABL § 21,
+    taxed when sold): absence from it says nothing about those, so ask what kind of fund
+    it is before concluding. A name search can match several funds: confirm the ISIN.
+    Data is read live from skat.dk (updated about monthly; cached a day). Cite the source
+    link and the published date. Not tax advice.
+    """
+    try:
+        return abis.lookup(query, year)
+    except LookupError as e:
+        raise ToolError(str(e)) from e
+    except OSError as e:
+        raise ToolError(f"Could not read the ABIS list from skat.dk: {e}") from e
+
+
+@server.tool()
+def get_jv_section(section: str) -> jv.JvSection:
+    """Fetch one section of Den juridiske vejledning (SKAT's legal guidance) by number.
+
+    section: e.g. 'C.A.8.2' or 'C.H.4.2.4'. Returns the current edition's title, URL and
+    text (navigation removed; long sections are cut, see truncated). Use it to quote and
+    cite the rule behind an answer, or to check a rule this server does not calculate.
+    Section numbers appear in the docstrings and sources of the other tools. The first
+    lookup of a section takes a few seconds (it walks the guide's structure); later ones
+    are faster. Cite the edition and URL. JV is guidance, the law itself wins.
+    """
+    try:
+        return jv.get_section(section)
+    except LookupError as e:
+        raise ToolError(str(e)) from e
+    except OSError as e:
+        raise ToolError(f"Could not read Den juridiske vejledning from info.skat.dk: {e}") from e

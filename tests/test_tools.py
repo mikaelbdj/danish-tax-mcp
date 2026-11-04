@@ -28,6 +28,8 @@ async def test_tool_surface():
         "estimate_property_tax",
         "estimate_share_income_tax",
         "estimate_couple_tax",
+        "lookup_abis",
+        "get_jv_section",
     }
     assert set(tools["get_figures"].input_schema["properties"]) == {"year", "keys"}
 
@@ -264,3 +266,52 @@ async def test_estimate_property_tax_sale_year():
     assert not result.is_error, result.content[0].text
     tax = result.structured_content["tax"]
     assert (tax["ejendomsvaerdiskat_dage"], tax["grundskyld_dage"]) == (125, 125)
+
+
+async def test_lookup_abis_tool(monkeypatch):
+    from datetime import date
+
+    from dk_tax import abis
+
+    def fake(query, year):
+        entry = abis.AbisEntry(
+            isin="IE00B4L5Y983", name="iShares Core MSCI World UCITS ETF", company="iShares plc",
+            tax_residence="Ireland (IE)", registered_years=[2026], deregistered_years=[],
+        )  # fmt: skip
+        return abis.AbisResult(year=year, query=query, on_list=True, matches=[entry],
+                               published=date(2026, 11, 3), source="https://skat.dk/media/x/abis.xlsx")  # fmt: skip
+
+    monkeypatch.setattr(abis, "lookup", fake)
+    result = await call("lookup_abis", query="IE00B4L5Y983", year=2026)
+    assert not result.is_error, result.content[0].text
+    assert result.structured_content["on_list"] is True
+
+
+async def test_lookup_abis_tool_reports_network_errors(monkeypatch):
+    from dk_tax import abis
+
+    def fail(query, year):
+        raise OSError("connection refused")
+
+    monkeypatch.setattr(abis, "lookup", fail)
+    result = await call("lookup_abis", query="IE00B4L5Y983", year=2026)
+    assert result.is_error
+    assert "skat.dk" in result.content[0].text
+
+
+async def test_get_jv_section_tool(monkeypatch):
+    from dk_tax import jv
+
+    def fake(section):
+        if section != "C.A.8.2":
+            raise LookupError(f"{section}: no such section")
+        return jv.JvSection(section="C.A.8.2", title="Ægtefællers skatteberegning",
+                            edition="Den juridiske vejledning 2026-2",
+                            url="https://info.skat.dk/data.aspx?oid=1976883", text="...", truncated=False)  # fmt: skip
+
+    monkeypatch.setattr(jv, "get_section", fake)
+    ok = await call("get_jv_section", section="C.A.8.2")
+    assert not ok.is_error
+    assert ok.structured_content["url"].endswith("oid=1976883")
+    bad = await call("get_jv_section", section="C.A.8.99")
+    assert bad.is_error and "C.A.8.99" in bad.content[0].text
