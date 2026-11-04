@@ -135,3 +135,56 @@ def test_quarterly_bonus_same_year_total_as_one_payment():
     assert quarterly.bonus_month.gross == 80_000 + Decimal(125_000) / 4
     assert quarterly.year_end.withheld == once.year_end.withheld
     assert quarterly.normal_month == once.normal_month
+
+
+def test_traekprocent_brackets_are_before_credits():
+    """BEK 1094/2025 § 6, stk. 1, nr. 2-4: the bracket components are computed 'uden nedsættelse
+    for personfradrag'. A large underskud (here from negative kapitalindkomst) uses up the state
+    taxes in the year calculation (PSL § 13), but must not lower the trækprocent."""
+    plain = estimate_payslip(2026, 75_000, kommuneskat=25)
+    underskud = estimate_payslip(2026, 75_000, kommuneskat=25, net_capital_income=-1_500_000)
+    assert plain.traekprocent_uafrundet > 25 + Decimal("12.01")  # has a mellemskat component
+    assert underskud.traekprocent_uafrundet == plain.traekprocent_uafrundet
+
+
+# --- Married couples (forskud with the spouse's income; PSL §§ 6-13 as in calc/couple.py) ---
+# Assumption, from KSL § 42 ('så vidt muligt svare til' the final tax), KSL-bek. § 9, stk. 2
+# (the forskudsskat is the tax that can be computed on the forskud) and skat.dk ('Ægteskab,
+# skilsmisse og skat', listing the automatic transfers under forskudsopgørelse): the forskud
+# includes what moves between spouses, so a transfer raises the skattekort fradrag.
+
+NO_INCOME = {"gross_salary": 0, "atp_full_time": False}
+
+
+def test_spouse_without_income_raises_the_fradrag():
+    """The trækprocent (rates) is the same; the forskudsskat falls by the spouse's unused
+    personfradrag value, and § 9 turns that into a higher fradrag."""
+    from dk_tax.calc.couple import estimate_couple_tax
+
+    single = estimate_payslip(2026, 50_000, kommuneskat=AARHUS)
+    married = estimate_payslip(2026, 50_000, kommuneskat=AARHUS, spouse=NO_INCOME)
+    couple = estimate_couple_tax(
+        2026, {"gross_salary": 600_000}, NO_INCOME, kommuneskat=AARHUS
+    )  # same person: 12 x 50.000, full-time ATP
+    moved = couple.overfoert_personfradrag_2_til_1
+    assert moved > 0
+    assert married.traekprocent == single.traekprocent
+    assert single.forskudsskat - married.forskudsskat == moved
+    assert married.fradrag_aar == skattekort_fradrag(
+        married.a_indkomst_aar, married.forskudsskat, married.traekprocent_uafrundet
+    )
+    assert married.fradrag_aar > single.fradrag_aar
+    assert married.overfoert_fra_aegtefaelle == moved
+    # Forskud and year-end agree: only the over-withholding from rounding the trækprocent up
+    # remains, as for a single salary (test_2026_salary_only_withholding_matches_annual_tax).
+    over = (
+        (married.traekprocent - married.traekprocent_uafrundet) / 100 * (married.a_indkomst_aar - married.fradrag_aar)
+    )
+    assert abs(-married.year_end.restskat - over) < 50
+
+
+def test_spouse_with_own_income_changes_nothing():
+    single = estimate_payslip(2026, 50_000, kommuneskat=AARHUS)
+    married = estimate_payslip(2026, 50_000, kommuneskat=AARHUS, spouse={"gross_salary": 450_000})
+    assert married.overfoert_fra_aegtefaelle == 0
+    assert (married.traekprocent, married.fradrag_aar) == (single.traekprocent, single.fradrag_aar)

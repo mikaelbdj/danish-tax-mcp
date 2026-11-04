@@ -213,6 +213,12 @@ class SpouseIncome(BaseModel):
     within_15_years_of_pension: bool = False
 
 
+def _spouse_inputs(sp: SpouseIncome, k: Kommune) -> dict:
+    d = sp.model_dump()
+    d["kirkeskat"] = k.kirkeskat if d.pop("folkekirke_member") else 0
+    return d
+
+
 class CoupleTaxResult(BaseModel):
     tax: CoupleTax
     kommune: KommuneResult
@@ -246,14 +252,13 @@ def estimate_couple_tax(
     kommune_result = _kommune(year, kommune)
     k = kommune_result.kommune
 
-    def inputs(sp: SpouseIncome) -> dict:
-        d = sp.model_dump()
-        d["kirkeskat"] = k.kirkeskat if d.pop("folkekirke_member") else 0
-        return d
-
     try:
         tax = _couple(
-            year, inputs(spouse_1), inputs(spouse_2), kommuneskat=k.kommuneskat, married_all_year=married_all_year
+            year,
+            _spouse_inputs(spouse_1, k),
+            _spouse_inputs(spouse_2, k),
+            kommuneskat=k.kommuneskat,
+            married_all_year=married_all_year,
         )
     except (LookupError, ValueError) as e:
         raise ToolError(str(e)) from e
@@ -286,6 +291,8 @@ def estimate_payslip(
     net_capital_income: int = 0,
     other_deductions: int = 0,
     within_15_years_of_pension: bool = False,
+    spouse: SpouseIncome | None = None,
+    married_all_year: bool = True,
 ) -> PayslipResult:
     """Predict the skattekort (trækprocent, månedsfradrag) and what is actually paid out in a
     normal month and in the bonus month, plus the year-end restskat, from 2026 onwards.
@@ -304,6 +311,11 @@ def estimate_payslip(
       "traekprocent" = the employer keeps back shares to cover the tax at the skattekort's
       percentage (withhold-to-cover, common in private companies); "fixed" = at
       share_withholding_rate percent. Ask the employer which applies; see share_vest.
+    spouse: if the person is married and lives with the spouse at year end, the spouse's
+      yearly income (as in estimate_couple_tax). The forskud then includes what moves
+      between spouses (unused personfradrag etc.), which raises this person's fradrag; see
+      overfoert_fra_aegtefaelle. The spouse's forskud must match, or SKAT's transfer and this
+      estimate differ. Unmarried couples: leave it out.
     Cite the sources with the income year and flag any figure that is not 'verified'.
     Assumptions are listed in dk_tax.calc.payslip. Not tax advice.
     """
@@ -330,6 +342,8 @@ def estimate_payslip(
             net_capital_income=net_capital_income,
             other_deductions=other_deductions,
             within_15_years_of_pension=within_15_years_of_pension,
+            spouse=_spouse_inputs(spouse, k) if spouse else None,
+            married_all_year=married_all_year,
         )
     except (LookupError, ValueError) as e:
         raise ToolError(str(e)) from e

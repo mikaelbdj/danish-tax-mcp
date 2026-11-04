@@ -31,7 +31,7 @@ ejendomsværdiskat, under-18 and senior rules.
 
 from decimal import ROUND_HALF_UP, Decimal
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, PrivateAttr
 
 from dk_tax.calc.figures import FigureRef, Figures
 
@@ -85,6 +85,9 @@ class SalaryTax(BaseModel):
     """True if every figure used has status 'verified'."""
     sources: dict[str, FigureRef]
     """Figure key -> evidence for every figure the calculation used."""
+    _before_credits: dict[str, Decimal] = PrivateAttr(default_factory=dict)
+    """The tax lines before underskud, personfradrag and nedslag (for the skattekort, which
+    computes the brackets 'uden nedsættelse for personfradrag'). Not part of the output."""
 
 
 def _kr(x: Decimal) -> Decimal:
@@ -325,6 +328,7 @@ class _Person:
             self.taxes["mellemskat"] = capped_bracket
             self.taxes["topskat"] = _pos(self.personlig - f.value("topskat_graense")) * f.rate("topskat")
             self.taxes["toptopskat"] = _pos(self.personlig - f.value("toptopskat_graense")) * f.rate("toptopskat")
+        self.before_credits = dict(self.taxes)
 
     def underskud(self) -> None:
         """§ 13, stk. 1: an underskud, valued at the kommune + kirke rate, reduces the state taxes."""
@@ -378,7 +382,7 @@ class _Person:
         indkomstskat = sum(self.taxes.values(), Decimal(0))
         skat_i_alt = _ore(indkomstskat + self.am_bidrag + self.am_aktieloen)
         gross, shown = self.gross, self.shown
-        return SalaryTax(
+        r = SalaryTax(
             year=self.year,
             am_bidrag_grundlag=self.am_grundlag,
             am_bidrag=self.am_bidrag,
@@ -405,3 +409,5 @@ class _Person:
             all_verified=self.f.all_verified(),
             sources=self.f.sources(),
         )
+        r._before_credits = dict(self.before_credits)
+        return r

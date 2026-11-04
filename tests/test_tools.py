@@ -315,3 +315,19 @@ async def test_get_jv_section_tool(monkeypatch):
     assert ok.structured_content["url"].endswith("oid=1976883")
     bad = await call("get_jv_section", section="C.A.8.99")
     assert bad.is_error and "C.A.8.99" in bad.content[0].text
+
+
+async def test_estimate_payslip_with_spouse():
+    """A spouse without income raises the fradrag (their personfradrag moves across)."""
+    args = {"year": 2026, "monthly_salary": 50_000, "kommune": "Aarhus", "folkekirke_member": False}
+    single = await call("estimate_payslip", **args)
+    married = await call(
+        "estimate_payslip",
+        **args,
+        spouse={"gross_salary": 0, "folkekirke_member": False, "atp_full_time": False},
+    )
+    assert not married.is_error, married.content[0].text
+    s, m = single.structured_content["payslip"], married.structured_content["payslip"]
+    assert Decimal(m["overfoert_fra_aegtefaelle"]) > 0
+    assert Decimal(m["fradrag_aar"]) > Decimal(s["fradrag_aar"])
+    assert m["traekprocent"] == s["traekprocent"]

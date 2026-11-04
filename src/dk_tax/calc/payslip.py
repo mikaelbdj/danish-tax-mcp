@@ -21,6 +21,14 @@ Rules, with sources:
   (share_withholding="traekprocent") or at a rate the employer states ("fixed"). No
   official rule was found for this; it follows the employer's description. The month's
   fradrag is assumed used by the salary, so none is applied to the vest.
+- Bracket components of the trækprocent use the bracket taxes before any credit (§ 6:
+  'uden nedsættelse for personfradrag'; also before an underskud, PSL § 13).
+- Married (spouse given): forskud and year-end use calc/couple.py, so the forskudsskat
+  includes what moves between the spouses and the fradrag rises. Assumption, no explicit
+  rule found: KSL § 42 (forskud 'så vidt muligt' = slutskat), KSL-bek. § 9, stk. 2 (the
+  tax that can be computed on the forskud) and skat.dk 'Ægteskab, skilsmisse og skat'
+  (automatic transfers listed under forskudsopgørelse, conditional on the spouse's forskud
+  being correct). The trækprocent stays per person.
 
 Assumptions (not settled by current official text; from SKAT's pre-reform guide
 'Beregning af personlige indkomstskatter', F.3.3.1-F.3.3.3):
@@ -36,6 +44,7 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict
 
+from dk_tax.calc.couple import _compute as couple_tax
 from dk_tax.calc.figures import FigureRef, Figures
 from dk_tax.calc.salary import REFORM_YEAR, estimate_salary_tax
 
@@ -87,6 +96,9 @@ class Payslip(BaseModel):
     """Expected tax excluding AM-bidrag on A-income."""
     b_skat_aar: Decimal
     """Forskudsskat the trækprocent cannot cover (paid as B-skat instalments)."""
+    overfoert_fra_aegtefaelle: Decimal = Decimal(0)
+    """With a spouse: skatteværdi of the spouse's unused personfradrag and § 11 nedslag that
+    lowers this person's forskudsskat (and so raises the fradrag)."""
     normal_month: MonthPayslip
     bonus_month: MonthPayslip | None
     share_vest: ShareVest | None = None
@@ -138,6 +150,8 @@ def estimate_payslip(
     net_capital_income: Amount = 0,
     other_deductions: Amount = 0,
     within_15_years_of_pension: bool = False,
+    spouse: dict | None = None,
+    married_all_year: bool = True,
 ) -> Payslip:
     """Skattekort, a normal month's and a bonus month's payslip, and the year-end result.
 
@@ -147,6 +161,9 @@ def estimate_payslip(
     The include_* flags say what is entered in the forskudsopgørelse; the year-end result
     always uses all income. share_withholding: "none" (B-income), "traekprocent" or "fixed"
     (withhold-to-cover at share_withholding_rate percent), spread over vests_per_year vests.
+    spouse: for a married person living with the spouse at year end, the spouse's yearly
+    income (the inputs of estimate_couple_tax's spouses). Forskud and year-end then use the
+    couple calculation, so what moves from the spouse raises this person's fradrag.
     """
     if year < REFORM_YEAR:
         raise ValueError(f"Payslip rules are implemented from income year {REFORM_YEAR}")
@@ -158,34 +175,40 @@ def estimate_payslip(
     own_pct, emp_pct = D(pension_own_pct) / 100, D(pension_employer_pct) / 100
     pensionable_bonus = bonus_ if bonus_has_pension else Decimal(0)
 
-    def year_tax(with_bonus: bool, with_shares: bool):
+    transfers = {}  # which year calculation -> skatteværdi received from the spouse
+
+    def year_tax(with_bonus: bool, with_shares: bool, label: str):
         b = bonus_ if with_bonus else Decimal(0)
         pb = pensionable_bonus if with_bonus else Decimal(0)
-        return estimate_salary_tax(
-            year,
-            12 * salary + b,
-            kommuneskat=kommuneskat,
-            kirkeskat=kirkeskat,
-            atp_full_time=atp_full_time,
-            pension_own=own_pct * (12 * salary + pb),
-            pension_employer=emp_pct * (12 * salary + pb),
-            share_compensation=share_compensation if with_shares else 0,
-            net_capital_income=net_capital_income,
-            other_deductions=other_deductions,
-            within_15_years_of_pension=within_15_years_of_pension,
-        )
+        person = {
+            "kirkeskat": kirkeskat,
+            "atp_full_time": atp_full_time,
+            "pension_own": own_pct * (12 * salary + pb),
+            "pension_employer": emp_pct * (12 * salary + pb),
+            "share_compensation": share_compensation if with_shares else 0,
+            "net_capital_income": net_capital_income,
+            "other_deductions": other_deductions,
+            "within_15_years_of_pension": within_15_years_of_pension,
+        }
+        if spouse is None:
+            transfers[label] = Decimal(0)
+            return estimate_salary_tax(year, 12 * salary + b, kommuneskat=kommuneskat, **person)
+        couple = couple_tax(year, {"gross_salary": 12 * salary + b, **person}, spouse, kommuneskat, married_all_year)
+        transfers[label] = couple.overfoert_personfradrag_2_til_1 + couple.overfoert_kompensation_2_til_1
+        return couple.spouse_1
 
-    forskud = year_tax(include_bonus_in_forskud, include_shares_in_forskud)
-    actual = year_tax(True, True)
+    forskud = year_tax(include_bonus_in_forskud, include_shares_in_forskud, "forskud")
+    actual = year_tax(True, True, "actual")
 
     # Trækprocent (BEK 1094/2025 § 6; BEK 772/2026 § 6 from 2027)
     pi = forskud.personlig_indkomst
     kapital_over = max(Decimal(0), D(net_capital_income) - figures["mellemskat_kapitalindkomst_bundfradrag"].value)
+    brackets = forskud._before_credits  # § 6: 'uden nedsættelse for personfradrag'
     components = [
         D(kommuneskat) + D(kirkeskat) + figures["bundskat"].value,
-        bracket_component(forskud.mellemskat, pi + kapital_over),
-        bracket_component(forskud.topskat, pi),
-        bracket_component(forskud.toptopskat, pi),
+        bracket_component(brackets["mellemskat"], pi + kapital_over),
+        bracket_component(brackets["topskat"], pi),
+        bracket_component(brackets["toptopskat"], pi),
     ]
     unrounded = sum(c for c in components if c > 0)
     traek = round_up_traekprocent(unrounded)
@@ -251,6 +274,7 @@ def estimate_payslip(
         a_indkomst_aar=a_aar,
         forskudsskat=forskudsskat,
         b_skat_aar=b_skat,
+        overfoert_fra_aegtefaelle=transfers["forskud"],
         normal_month=normal,
         bonus_month=bonus_month,
         share_vest=share_vest,
