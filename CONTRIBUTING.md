@@ -31,7 +31,14 @@ Figures for a year are usually published the autumn before. From November,
    uv run python scripts/kommuner_from_xlsx.py <year> <xlsx URL>
    ```
 
-5. Add a few of the new values to `test_pinned_values` in `tests/test_data.py` and run
+5. Compare with skat.dk's rate overview. A DIFF is a reason to look again, not to copy
+   the value, since the YAML cites svmn.dk or the law:
+
+   ```sh
+   uv run python scripts/check_satser.py <year>
+   ```
+
+6. Add a few of the new values to `test_pinned_values` in `tests/test_data.py` and run
    `uv run pytest`.
 
 ## Checks
