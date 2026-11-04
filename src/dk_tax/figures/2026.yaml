@@ -173,26 +173,27 @@ ratepension_max_indskud:
   value: 68700
   unit: DKK
   source: https://svmn.dk/tal-og-metode/satser/satser-og-beloebsgraenser-i-lovgivningen/pensionsbeskatningsloven
-  verified: 2026-11-01
+  verified: 2026-11-04
   status: verified
-  note: PBL § 16, stk. 2. Covers employer and own contributions together.
+  note: "PBL § 16, stk. 2: for each income year in total, per person, across all providers and schemes (rateforsikring, rateopsparing, ophørende livrente), employer and own contributions together. Each provider only sees its own accounts, so the saver keeps track. Not for §§ 15, 15 A, 15 B schemes."
 
 aldersopsparing_max_indskud:
   name: Aldersopsparing, grundbeløb (mere end 7 år til folkepensionsalder)
   value: 9900
   unit: DKK
   source: https://skat.dk/borger/pension-og-efterloen/aldersopsparing-og-aldersforsikring
-  verified: 2026-11-01
+  verified: 2026-11-04
   status: verified
+  note: "PBL § 16, stk. 1: for each income year in total, per person, across all providers (aldersopsparing, aldersforsikring, supplerende engangssum). Payments an employer makes to such a scheme for the person reduce the amount; employer contributions to ratepension or livrente do not. Each provider only checks its own accounts (stk. 1, 3. pkt.), so the saver keeps track across banks and pension companies."
 
 aldersopsparing_max_indskud_7aar:
   name: Aldersopsparing, maks. indskud (maks. 7 år til folkepensionsalder)
   value: 64200
   unit: DKK
   source: https://skat.dk/borger/pension-og-efterloen/aldersopsparing-og-aldersforsikring
-  verified: 2026-11-01
+  verified: 2026-11-04
   status: verified
-  note: The 10-års-reglen can limit this to the grundbeløb; see source.
+  note: "PBL § 16, stk. 1: for each income year in total, per person, across all providers (aldersopsparing, aldersforsikring, supplerende engangssum). Payments an employer makes to such a scheme for the person reduce the amount; employer contributions to ratepension or livrente do not. Each provider only checks its own accounts (stk. 1, 3. pkt.), so the saver keeps track across banks and pension companies. The 10-års-reglen can limit this to the grundbeløb; see source."
 
 pal_skat:
   name: Skat af det skattepligtige afkast (pensionsafkastskat)
@@ -363,3 +364,23 @@ grundskyld_stigningsprocent:
   verified: 2026-11-03
   status: verified
   note: ESL § 45, stk. 2, nr. 2, from 2025. Grundskyld is the lower of the full grundskyld and last year's grundskyld plus this percentage of the full grundskyld. Follows the property, also after a change of owner (not in § 45, stk. 3).
+
+# --- Restskat (kildeskatteloven) --------------------------------------------
+
+restskat_indregningsgraense:
+  name: Indregningsgrænse for restskat mv.
+  value: 25200
+  unit: DKK
+  source: https://svmn.dk/tal-og-metode/satser/satser-og-beloebsgraenser-i-lovgivningen/kildeskatteloven
+  verified: 2026-11-04
+  status: verified
+  note: "KSL § 61, stk. 3: restskat up to this amount (grundbeløb 18.300 kr., 2010-niveau) is collected through the next year's skattekort, with the procenttillæg added; skat.dk quotes the limit including the tillæg. The dag-til-dag rente and procenttillæg for income year 2026 are set by SKAT in December 2026 (svmn.dk: 'Fastlægges senere')."
+
+restskat_mindsterate:
+  name: Mindsterate ved opkrævning af B-skat og restskat
+  value: 500
+  unit: DKK
+  source: https://svmn.dk/tal-og-metode/satser/satser-og-beloebsgraenser-i-lovgivningen/kildeskatteloven
+  verified: 2026-11-04
+  status: verified
+  note: "KSL § 62 C: instalments of at least 500 kr.; a restskat under 500 kr. (with tillæg and interest) is not collected. A fixed amount."

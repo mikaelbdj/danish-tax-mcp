@@ -64,6 +64,11 @@ def test_kommune_tables_are_complete(year):
         (2027, "personfradrag", 55700),
         (2027, "topskat_graense", 800500),
         (2027, "aldersopsparing_max_indskud_7aar", 66000),  # the one the regex bug broke
+        (2025, "restskat_dag_til_dag_rente", "3.7"),
+        (2025, "restskat_procenttillaeg", "5.7"),
+        (2026, "restskat_indregningsgraense", 25200),
+        (2027, "restskat_indregningsgraense", 25900),
+        (2026, "restskat_mindsterate", 500),
     ],
 )
 def test_pinned_values(year, key, value):
@@ -112,3 +117,33 @@ def test_aktiesparekonto_loft_is_a_value_limit(year):
     assert "31 December" in f.note and "net deposits" in f.note
     assert "total deposits" not in f.note.replace("not a cap on total deposits", "")
     assert "500.000" not in f.note
+
+
+def test_restskat_rates_2025_fit_the_law_and_skat_dk():
+    """KSL § 59: dag-til-dag rente = OPKL § 7, stk. 2 rate - 0,5 points; § 61, stk. 2:
+    procenttillæg = the same rate + 1,5 points (so they differ by 2,0). skat.dk quotes the
+    indregningsgrænse with the tillæg added: 24.000 x 1,057 = 25.368 kr. for income year 2025."""
+    f = load_year(2025)
+    rente, tillaeg = f["restskat_dag_til_dag_rente"].value, f["restskat_procenttillaeg"].value
+    assert tillaeg - rente == 2
+    graense = f["restskat_indregningsgraense"].value
+    assert graense * (1 + f["restskat_procenttillaeg"].rate()) == 25368
+
+
+def test_restskat_rates_for_future_years_are_not_guessed():
+    """svmn.dk: 'Fastlægges senere' for 2026 and 2027; SKAT sets them in December."""
+    for year in (2026, 2027):
+        assert "restskat_procenttillaeg" not in load_year(year)
+        assert "December" in load_year(year)["restskat_indregningsgraense"].note
+
+
+@pytest.mark.parametrize("year", [2025, 2026, 2027])
+def test_pension_caps_are_per_person_across_all_schemes(year):
+    """PBL § 16, stk. 1 ('i alt'; employer payments to aldersopsparing reduce the grundbeløb;
+    each institution only checks its own) and stk. 2 ('i alt ... for hver person')."""
+    f = load_year(year)
+    rate = f["ratepension_max_indskud"].note
+    assert "§ 16, stk. 2" in rate and "per person" in rate and "all providers" in rate
+    for key in ("aldersopsparing_max_indskud", "aldersopsparing_max_indskud_7aar"):
+        note = f[key].note or ""
+        assert "§ 16, stk. 1" in note and "per person" in note and "employer" in note

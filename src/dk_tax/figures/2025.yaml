@@ -134,25 +134,27 @@ ratepension_max_indskud:
   value: 65500
   unit: DKK
   source: https://skat.dk/hjaelp/satser
-  verified: 2026-11-01
+  verified: 2026-11-04
   status: verified
-  note: Covers employer and own contributions together.
+  note: "PBL § 16, stk. 2: for each income year in total, per person, across all providers and schemes (rateforsikring, rateopsparing, ophørende livrente), employer and own contributions together. Each provider only sees its own accounts, so the saver keeps track. Not for §§ 15, 15 A, 15 B schemes."
 
 aldersopsparing_max_indskud:
   name: Aldersopsparing - indtil 7 år før folkepensionsalderen
   value: 9400
   unit: DKK
   source: https://skat.dk/hjaelp/satser
-  verified: 2026-11-01
+  verified: 2026-11-04
   status: verified
+  note: "PBL § 16, stk. 1: for each income year in total, per person, across all providers (aldersopsparing, aldersforsikring, supplerende engangssum). Payments an employer makes to such a scheme for the person reduce the amount; employer contributions to ratepension or livrente do not. Each provider only checks its own accounts (stk. 1, 3. pkt.), so the saver keeps track across banks and pension companies."
 
 aldersopsparing_max_indskud_7aar:
   name: Aldersopsparing - fra og med det 7. år før folkepensionsalderen
   value: 61200
   unit: DKK
   source: https://skat.dk/hjaelp/satser
-  verified: 2026-11-01
+  verified: 2026-11-04
   status: verified
+  note: "PBL § 16, stk. 1: for each income year in total, per person, across all providers (aldersopsparing, aldersforsikring, supplerende engangssum). Payments an employer makes to such a scheme for the person reduce the amount; employer contributions to ratepension or livrente do not. Each provider only checks its own accounts (stk. 1, 3. pkt.), so the saver keeps track across banks and pension companies."
 
 pal_skat:
   name: Skat af det skattepligtige afkast (pensionsafkastskat)
@@ -276,3 +278,41 @@ atp_arbejdsgiver_maaned:
   verified: 2026-11-02
   status: verified
   note: Per month, full time. BEK nr 1621 af 12/12/2023 § 2, in force from 1 January 2024.
+
+# --- Restskat (kildeskatteloven) --------------------------------------------
+
+restskat_dag_til_dag_rente:
+  name: Dag-til-dag rente af restskat (betaling 1. januar - 1. juli 2026)
+  value: 3.7
+  unit: percent
+  source: https://skat.dk/en-us/individuals/tax-assessment-notice/outstanding-tax/pay-outstanding-tax
+  verified: 2026-11-04
+  status: verified
+  note: "KSL § 59: OPKL § 7, stk. 2 rate minus 0,5 points, charged daily from 1 January of the following year to the payment day on restskat paid voluntarily by 1 July. A voluntary payment made by 31 December of the income year carries no interest (§ 59, stk. 1, 2. pkt.: only 'ved betaling ... efter udløbet af indkomståret')."
+
+restskat_procenttillaeg:
+  name: Procenttillæg af restskat (ikke betalt senest 1. juli 2026)
+  value: 5.7
+  unit: percent
+  source: https://skat.dk/en-us/individuals/tax-assessment-notice/outstanding-tax/pay-outstanding-tax
+  verified: 2026-11-04
+  status: verified
+  note: "KSL § 61, stk. 2: OPKL § 7, stk. 2 rate plus 1,5 points, on restskat not paid by 1 July. Up to the indregningsgrænse it is collected through the next year's skattekort; the rest in three instalments (August to October)."
+
+restskat_indregningsgraense:
+  name: Indregningsgrænse for restskat
+  value: 24000
+  unit: DKK
+  source: https://skat.dk/hjaelp/satser
+  verified: 2026-11-04
+  status: verified
+  note: "KSL § 61, stk. 3: restskat up to this amount (grundbeløb 18.300 kr., 2010-niveau) is collected through the next year's skattekort, with the procenttillæg added; skat.dk quotes the limit including the tillæg. skat.dk's page on paying restskat quotes 25.368 kr., which is 24.000 kr. with the 5,7 % tillæg."
+
+restskat_mindsterate:
+  name: Mindsterate ved opkrævning af B-skat og restskat
+  value: 500
+  unit: DKK
+  source: https://www.retsinformation.dk/eli/lta/2024/460
+  verified: 2026-11-04
+  status: verified
+  note: "KSL § 62 C: instalments of at least 500 kr.; a restskat under 500 kr. (with tillæg and interest) is not collected. A fixed amount."

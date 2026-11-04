@@ -57,6 +57,9 @@ def _mapping(year: int) -> list[tuple[str, list[str]]]:
         ("Ejendomsværdiskattesats (indtil progressionsgrænse)", ["ejendomsvaerdiskat_sats"]),
         ("Ejendomsværdiskattesats (over progressionsgrænse)", ["ejendomsvaerdiskat_progressiv_sats"]),
         ("Ejendomsværdiskattesats (progressionsgrænse)", ["ejendomsvaerdiskat_progressionsgraense"]),
+        ("Restskat (grænse for indregning)", ["restskat_indregningsgraense"]),
+        ("Restskat: Dag-til-dag-rente", ["restskat_dag_til_dag_rente"]),
+        ("Restskat: Procenttillæg", ["restskat_procenttillaeg"]),
         (
             "Bundfradrag i positiv nettokapitalindkomst i topskattegrundlaget",
             ["topskat_kapitalindkomst_bundfradrag" if old else "mellemskat_kapitalindkomst_bundfradrag"],

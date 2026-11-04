@@ -10,7 +10,8 @@ Rules, with sources:
 - Rounded up to a whole percent and capped: KSL-bekendtgørelsen (BEK nr 839 af 24/06/2025) § 12.
 - Fradrag: KSL-bekendtgørelsen § 9: A-indkomst - forskudsskat x 100 / unrounded trækprocent,
   0 if negative. Forskudsskat excludes AM-bidrag withheld on A-income (§ 9, stk. 2).
-- Monthly fradrag: proportional share of the yearly fradrag (KSL § 48, stk. 3).
+- Monthly fradrag: proportional share of the yearly fradrag (KSL § 48, stk. 4; stk. 3 before
+  lov nr. 1648 af 16/12/2025 renumbered it from 2026).
 - A-skat per payslip: trækprocent x (A-income after own pension, own ATP and AM-bidrag
   - månedsfradrag): KSL §§ 46, 48; eIndkomst felt 13 definition.
 - Shares (RSU, LL § 16) are B-income: no withholding by the employer (skat.dk, 'Skat af
