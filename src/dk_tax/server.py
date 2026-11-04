@@ -279,7 +279,13 @@ def estimate_property_tax(
 
     ejendomsvaerdi, grundvaerdi: DKK as assessed in the official property valuation for the
       PREVIOUS year (the 2026 tax uses the 2025 values). For an ejerlejlighed, the flat's own
-      values. 80 % of each is taxed.
+      values. 80 % of each is taxed. The values are on vurderingsportalen.dk. For 2026 SKAT
+      charges a provisional tax from a foreløbig vurdering and recalculates it when the final
+      valuation is ready, so the estimate can change later.
+      Exception: for a new build, a newly created ejerlejlighed, or a conversion or extension
+      with a building permit in the year, SKAT uses a provisional base or the current year's
+      valuation (ESL § 13, stk. 3 and 5; § 17, stk. 4-5). Tell the user this estimate may not
+      match. A sale on its own does not trigger the exception.
     ejerandel_pct: the user's ownership share; ejendomsværdiskat is computed for the whole
       property and then split. Grundskyld is reported for the whole property.
     grundskyld_forrige_aar: the property's grundskyld last year (e.g. from the previous owner's
@@ -291,6 +297,8 @@ def estimate_property_tax(
     indflytningsdag: only if the user moves in later than the overtagelsesdag AND is moving
       from another home they own and are selling; it then replaces the overtagelsesdag for
       ejendomsværdiskat only. Moving from a rental: leave it out.
+    Once the purchase is registered in the forskudsopgørelse (TastSelv), SKAT shows its own
+    amounts under 'Eksisterende ejendomme og grunde'; suggest the user compare.
     Selling during the year is not handled. Buyers get no transitional rabat (it lapses on a
     change of owner).
     Mortgage interest (rentefradrag) is not a property tax: pass it as negative
