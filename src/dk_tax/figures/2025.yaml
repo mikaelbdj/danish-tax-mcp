@@ -202,13 +202,13 @@ aktiesparekonto_skat:
   note: Taxed yearly on the change in value (lagerbeskatning).
 
 aktiesparekonto_indskudsloft:
-  name: Loft for indskud på aktiesparekonto
+  name: Værdigrænse for indskud på aktiesparekonto (indskudsloft)
   value: 166200
   unit: DKK
   source: https://skat.dk/borger/aktier-og-andre-vaerdipapirer/aktiesparekonto
-  verified: 2026-11-01
+  verified: 2026-11-04
   status: verified
-  note: Ceiling on total deposits, not yearly deposits.
+  note: "Aktiesparekontoloven § 9, stk. 1: the account's value on 31 December of the previous year plus this year's net deposits may not exceed this; not a cap on total deposits (gains use up room, withdrawals free it, skat.dk). Deposits to pay the account's tax are allowed beyond it (stk. 2); an excess must be paid out, with a 3 % yearly charge (stk. 3)."
 
 # --- Deductions and compensation --------------------------------------------
 

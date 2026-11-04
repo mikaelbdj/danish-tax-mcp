@@ -100,3 +100,15 @@ def test_loaded_figures_are_read_only():
         load_year(2026)["bundskat"] = None
     with pytest.raises(TypeError):
         load_kommuner(2026).kommuner["aarhus"] = None
+
+
+@pytest.mark.parametrize("year", [2025, 2026, 2027])
+def test_aktiesparekonto_loft_is_a_value_limit(year):
+    """Aktiesparekontoloven § 9, stk. 1: the account's value on 31 December plus the year's net
+    deposits may not exceed the grænse; it is not a cap on total deposits (svmn.dk calls it
+    'Værdigrænse for indskud'; skat.dk's examples). No unsourced claims in the note."""
+    f = load_year(year)["aktiesparekonto_indskudsloft"]
+    assert "Værdigrænse" in f.name
+    assert "31 December" in f.note and "net deposits" in f.note
+    assert "total deposits" not in f.note.replace("not a cap on total deposits", "")
+    assert "500.000" not in f.note
