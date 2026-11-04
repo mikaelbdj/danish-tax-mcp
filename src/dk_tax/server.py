@@ -18,6 +18,7 @@ from dk_tax.calc.property import estimate_property_tax as _property
 from dk_tax.calc.salary import SalaryTax
 from dk_tax.calc.salary import estimate_salary_tax as _estimate
 from dk_tax.calc.shares import ShareIncomeTax
+from dk_tax.calc.shares import estimate_couple_share_income_tax as _couple_shares
 from dk_tax.calc.shares import estimate_share_income_tax as _shares
 from dk_tax.loader import Figure, Kommune, Status, load_kommuner, load_year, slug
 
@@ -399,6 +400,25 @@ def estimate_property_tax(
     return PropertyTaxResult(tax=tax, kommune=kommune_result)
 
 
+class SpouseShareIncome(BaseModel):
+    """The spouse's share income for estimate_share_income_tax; all fields DKK, optional."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    boersnoteret_udbytte_gevinst: int = 0
+    boersnoteret_tab: int = 0
+    boersnoteret_tab_fremfoert: int = 0
+    oevrig_aktieindkomst: int = 0
+    udbytteskat_indeholdt: int = 0
+    negativ_skat_fremfoert: int = 0
+    oevrig_slutskat: int | None = None
+
+
+class ShareIncomeTaxResult(BaseModel):
+    person: ShareIncomeTax
+    spouse: ShareIncomeTax | None
+
+
 @server.tool()
 def estimate_share_income_tax(
     year: int,
@@ -409,7 +429,8 @@ def estimate_share_income_tax(
     udbytteskat_indeholdt: int = 0,
     negativ_skat_fremfoert: int = 0,
     oevrig_slutskat: int | None = None,
-) -> ShareIncomeTax:
+    spouse: SpouseShareIncome | None = None,
+) -> ShareIncomeTaxResult:
     """Estimate skat af aktieindkomst (27 % / 42 %) for one person for one income year.
 
     Aktieindkomst is share dividends and gains and losses on shares, taxed apart from salary
@@ -429,22 +450,30 @@ def estimate_share_income_tax(
       negative tax is credited against. Without it slutskat_ukendt is true and all negative
       tax is assumed usable: say so.
     netto is what shares add to (or, if negative, take off) the year's tax.
-    Ask whether the shares are listed: the loss rules differ. Married couples are not
-    handled yet: the grænse can be shared and listed losses must move to the spouse.
+    Ask whether the shares are listed: the loss rules differ.
+    spouse: for a married couple living together at year end, the spouse's share income
+      (same fields). Then an unused grænse moves to the other spouse, negative aktieindkomst
+      is set against the spouse's positive, a listed loss the owner cannot use is deducted
+      in the spouse's listed income, and negative tax can be credited in the spouse's
+      slutskat. Pass the spouse even if they have no shares (an empty object), since
+      their unused grænse still counts. Unmarried couples: one call each, no spouse.
     Foreign withholding tax relief (e.g. US dividends) is not handled.
     Cite the sources with the income year and flag any figure that is not 'verified'.
     Not tax advice.
     """
+    person = {
+        "boersnoteret_udbytte_gevinst": boersnoteret_udbytte_gevinst,
+        "boersnoteret_tab": boersnoteret_tab,
+        "boersnoteret_tab_fremfoert": boersnoteret_tab_fremfoert,
+        "oevrig_aktieindkomst": oevrig_aktieindkomst,
+        "udbytteskat_indeholdt": udbytteskat_indeholdt,
+        "negativ_skat_fremfoert": negativ_skat_fremfoert,
+        "oevrig_slutskat": oevrig_slutskat,
+    }
     try:
-        return _shares(
-            year,
-            boersnoteret_udbytte_gevinst=boersnoteret_udbytte_gevinst,
-            boersnoteret_tab=boersnoteret_tab,
-            boersnoteret_tab_fremfoert=boersnoteret_tab_fremfoert,
-            oevrig_aktieindkomst=oevrig_aktieindkomst,
-            udbytteskat_indeholdt=udbytteskat_indeholdt,
-            negativ_skat_fremfoert=negativ_skat_fremfoert,
-            oevrig_slutskat=oevrig_slutskat,
-        )
+        if spouse is None:
+            return ShareIncomeTaxResult(person=_shares(year, **person), spouse=None)
+        a, b = _couple_shares(year, person, spouse.model_dump())
+        return ShareIncomeTaxResult(person=a, spouse=b)
     except (LookupError, ValueError) as e:
         raise ToolError(str(e)) from e

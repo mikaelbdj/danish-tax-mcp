@@ -191,7 +191,8 @@ async def test_estimate_share_income_tax_tool():
     """JV C.E.3.2.4.1.2, eksempel 3 over the protocol: -150.000 kr. gives 51.090 negative tax."""
     result = await call("estimate_share_income_tax", year=2026, oevrig_aktieindkomst=-150_000, oevrig_slutskat=30_000)
     assert not result.is_error
-    tax = result.structured_content
+    tax = result.structured_content["person"]
+    assert result.structured_content["spouse"] is None
     assert tax["negativ_skat"] == "51090.00"
     assert tax["negativ_skat_fremfoert_naeste_aar"] == "21090.00"
     assert tax["sources"]["aktieindkomst_progressionsgraense"]["status"] == "verified"
@@ -235,3 +236,16 @@ async def test_estimate_couple_tax_rejects_unknown_fields():
     )
     assert result.is_error
     assert "salary" in result.content[0].text  # names the unknown field
+
+
+async def test_estimate_share_income_tax_with_spouse():
+    """§ 8 a, stk. 4: spouse with 20.000 lends 59.400 of grænse: 63.180 instead of 72.090."""
+    result = await call(
+        "estimate_share_income_tax",
+        year=2026,
+        boersnoteret_udbytte_gevinst=200_000,
+        spouse={"boersnoteret_udbytte_gevinst": 20_000},
+    )
+    assert not result.is_error, result.content[0].text
+    assert result.structured_content["person"]["skat"] == "63180.00"
+    assert result.structured_content["spouse"]["skat"] == "5400.00"

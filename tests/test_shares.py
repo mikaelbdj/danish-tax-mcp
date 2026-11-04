@@ -9,7 +9,7 @@ from decimal import Decimal
 
 import pytest
 
-from dk_tax.calc.shares import estimate_share_income_tax
+from dk_tax.calc.shares import estimate_couple_share_income_tax, estimate_share_income_tax
 
 
 def test_jv_example_3_negative_aktieindkomst():
@@ -115,3 +115,72 @@ def test_unknown_slutskat_assumes_the_negative_tax_is_used_and_flags_it():
 def test_amounts_that_cannot_be_negative_are_rejected():
     with pytest.raises(ValueError, match="boersnoteret_tab"):
         estimate_share_income_tax(2026, boersnoteret_tab=-1)
+
+
+# --- Married couples (PSL § 8 a, stk. 4 and 6; ABL § 13 A) -------------------------------
+# Hand calculations from the law; 2026 grænse 79.400, double 158.800.
+
+
+def test_spouse_with_little_aktieindkomst_lends_the_unused_graense():
+    """§ 8 a, stk. 4: A has 20.000, so B's grænse is 79.400 + 59.400 = 138.800.
+    B: 27 % x 138.800 + 42 % x 61.200 = 37.476 + 25.704 = 63.180 (single: 72.090)."""
+    a, b = estimate_couple_share_income_tax(
+        2026, {"boersnoteret_udbytte_gevinst": 20_000}, {"boersnoteret_udbytte_gevinst": 200_000}
+    )
+    assert a.skat == Decimal("5400.00")
+    assert b.progressionsgraense == 138_800
+    assert b.skat == Decimal("63180.00")
+
+
+def test_negative_aktieindkomst_offsets_the_spouses_positive():
+    """§ 8 a, stk. 6: A -50.000 (unlisted) against B's 200.000: B is taxed on 150.000, with
+    A's whole grænse (A is now 0), so all at 27 %: 40.500."""
+    a, b = estimate_couple_share_income_tax(
+        2026, {"oevrig_aktieindkomst": -50_000}, {"boersnoteret_udbytte_gevinst": 200_000}
+    )
+    assert a.aktieindkomst == 0
+    assert a.negativ_skat == 0
+    assert b.aktieindkomst == 150_000
+    assert b.skat == Decimal("40500.00")
+
+
+def test_remaining_negative_uses_the_double_graense():
+    """§ 8 a, stk. 6, 3. pkt.; the arithmetic of JV C.E.3.2.4.1.2 (both spouses, 2026):
+    -300.000 with 2 x 79.400: 27 % x 158.800 = 42.876 + 42 % x 141.200 = 59.304 = 102.180."""
+    a, b = estimate_couple_share_income_tax(2026, {"oevrig_aktieindkomst": -300_000}, {})
+    assert a.negativ_skat == Decimal("102180.00")
+    assert b.negativ_skat == 0
+
+
+def test_both_negative_share_the_double_graense():
+    """§ 8 a, stk. 6, 4. pkt.: A -100.000, B -60.000; 158.800 split 100:60 = 99.250 / 59.550.
+    A: 27 % x 99.250 + 42 % x 750 = 27.112,50. B: 27 % x 59.550 + 42 % x 450 = 16.267,50."""
+    a, b = estimate_couple_share_income_tax(2026, {"oevrig_aktieindkomst": -100_000}, {"oevrig_aktieindkomst": -60_000})
+    assert a.negativ_skat == Decimal("27112.50")
+    assert b.negativ_skat == Decimal("16267.50")
+
+
+def test_unused_listed_loss_must_move_to_the_spouse():
+    """ABL § 13 A, JV C.B.2.2.1.4: A's listed loss beyond A's listed income (50.000 - 10.000
+    = 40.000) is deducted in B's listed income 30.000; the last 10.000 goes back to A."""
+    a, b = estimate_couple_share_income_tax(
+        2026,
+        {"boersnoteret_udbytte_gevinst": 10_000, "boersnoteret_tab": 50_000},
+        {"boersnoteret_udbytte_gevinst": 30_000},
+    )
+    assert b.boersnoteret_netto == 0
+    assert a.boersnoteret_tab_fremfoert_naeste_aar == 10_000
+    assert b.boersnoteret_tab_fremfoert_naeste_aar == 0
+
+
+def test_negative_tax_the_spouse_cannot_use_goes_to_the_other_spouses_slutskat():
+    """§ 8 a, stk. 6, 5. pkt.: A -150.000 with the double grænse: 27 % x 150.000 = 40.500.
+    A's slutskat 10.000 takes 10.000; B's slutskat takes the other 30.500."""
+    a, b = estimate_couple_share_income_tax(
+        2026, {"oevrig_aktieindkomst": -150_000, "oevrig_slutskat": 10_000}, {"oevrig_slutskat": 100_000}
+    )
+    assert a.negativ_skat == Decimal("40500.00")
+    assert a.negativ_skat_anvendt == Decimal("40500.00")
+    assert a.negativ_skat_fremfoert_naeste_aar == 0
+    assert a.netto == Decimal("-10000.00")
+    assert b.netto == Decimal("-30500.00")
